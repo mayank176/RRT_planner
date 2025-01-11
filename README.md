@@ -1,1 +1,1 @@
-# RRT_planner
+## Motion Planning with Rapidly Exploring Random Tree (RRT)

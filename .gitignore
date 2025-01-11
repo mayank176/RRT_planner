@@ -1,0 +1,21 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+
+# Build directories
+build/
+debug/
+release/
+log/
+install/
+
+# IDE specific files
+.vscode/
+.idea/
