@@ -34,7 +34,7 @@ class path_visualizer : public rclcpp::Node {
             marker.color.r = 0.0;
             marker.color.g = 1.0;
             marker.color.b = 0.0;
-            marker.color.a = 0.2;
+            marker.color.a = 0.1;
 
             for (const auto &node : rrt_->nodes) {
                 if (node->parent) {
@@ -55,37 +55,38 @@ class path_visualizer : public rclcpp::Node {
             return marker;
         }
 
-        visualization_msgs::msg::Marker create_obstacle_marker() {
+        visualization_msgs::msg::MarkerArray create_obstacle_marker() {
                 
+            visualization_msgs::msg::MarkerArray markers;
+            int id = 1;
+
+            for (const auto &obstacle : rrt_->obstacles) {
+    
                 visualization_msgs::msg::Marker marker;
                 marker.header.frame_id = "map";
                 marker.header.stamp = this->now();
-    
                 marker.ns = "obstacles";
-                marker.id = 1;
+                marker.id = id++;
     
-                marker.type = visualization_msgs::msg::Marker::CUBE_LIST;
+                marker.type = visualization_msgs::msg::Marker::CUBE;
                 marker.action = visualization_msgs::msg::Marker::ADD;
     
                 marker.color.r = 1.0;
-                marker.color.g = 0.0;
-                marker.color.b = 0.0;
+                marker.color.g = 1.0;
+                marker.color.b = 1.0;
                 marker.color.a = 1.0;
-    
-                for (const auto &obstacle : rrt_->obstacles) {
-                    geometry_msgs::msg::Point center;
-    
-                    center.x = (obstacle.min.x + obstacle.max.x) / 2.0;
-                    center.y = (obstacle.min.y + obstacle.max.y) / 2.0;
-                    center.z = (obstacle.min.z + obstacle.max.z) / 2.0;
 
-                    marker.scale.x = obstacle.max.x - obstacle.min.x;
-                    marker.scale.y = obstacle.max.y - obstacle.min.y;
-                    marker.scale.z = obstacle.max.z - obstacle.min.z;
-    
-                    marker.points.push_back(center);
-                }
-                return marker;
+                marker.pose.position.x = (obstacle.min.x + obstacle.max.x) / 2.0;
+                marker.pose.position.y = (obstacle.min.y + obstacle.max.y) / 2.0;
+                marker.pose.position.z = (obstacle.min.z + obstacle.max.z) / 2.0;
+
+                marker.scale.x = obstacle.max.x - obstacle.min.x;
+                marker.scale.y = obstacle.max.y - obstacle.min.y;
+                marker.scale.z = obstacle.max.z - obstacle.min.z;
+
+                markers.markers.push_back(marker);
+            }
+            return markers;
         }
 
         visualization_msgs::msg::Marker create_path_marker() {
@@ -124,10 +125,10 @@ class path_visualizer : public rclcpp::Node {
             visualization_msgs::msg::MarkerArray marker_array;
 
             auto tree_marker = create_tree_marker();
-            auto obstacle_marker = create_obstacle_marker();
+            auto obstacle_markers = create_obstacle_marker();
 
             marker_array.markers.push_back(tree_marker);
-            marker_array.markers.push_back(obstacle_marker);
+            marker_array.markers.insert(marker_array.markers.end(), obstacle_markers.markers.begin(), obstacle_markers.markers.end());
 
             if (!path_.empty()){
                 auto path_marker = create_path_marker();
@@ -136,6 +137,10 @@ class path_visualizer : public rclcpp::Node {
                 Point goal(10.0, 10.0, 10.0);
                 path_ = rrt_->find_rrt_path(goal);
                 if (!path_.empty()){
+                    //print path_
+                    for (const auto &point : path_) {
+                        RCLCPP_INFO(this->get_logger(), "Path: %f %f %f", point.x, point.y, point.z);
+                    }
                     RCLCPP_INFO(this->get_logger(), "Path found!");
                 }
             }
@@ -149,15 +154,21 @@ class path_visualizer : public rclcpp::Node {
 
             marker_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 10);
 
-            Point start(-10.0, -10.0, -10.0);
+            Point start(-9.0, -9.0, -9.0);
             Point goal(10.0, 10.0, 10.0);
             Point min_bound(-10.0, -10.0, -10.0);
             Point max_bound(11.0, 11.0, 11.0);
 
             rrt_ = std::make_unique<RRT>(start, min_bound, max_bound);
 
-            Cuboid obstacle1(Point(-3.0, -3.0, -3.0), Point(3.0, 3.0, 3.0));
+            Cuboid obstacle1(Point(-10.0, -10.0, -10.0), Point(11.0, 11.0, -9.75));
             rrt_->add_obstacle(obstacle1);
+
+            Cuboid obstacle2(Point(-8.0, -8.0, -8.0), Point(-4.0, -4.0, 0.0));
+            rrt_->add_obstacle(obstacle2);
+
+            Cuboid obstacle3(Point(0.0, 0.0, 0.0), Point(8.0, 8.0, 8.0));
+            rrt_->add_obstacle(obstacle3);
             
             using namespace std::chrono_literals;
             timer_ = this->create_wall_timer(
