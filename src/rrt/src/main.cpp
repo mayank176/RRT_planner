@@ -4,6 +4,9 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
+#include <rclcpp/rclcpp.hpp>
+#include <nav_msgs/msg/path.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 
 struct Point{
     double x, y, z;
@@ -17,12 +20,12 @@ struct Point{
     }
 };
 
-struct Node {
+struct rrtNode {
     Point position;
-    Node* parent;
-    std::vector<Node*> children;
+    rrtNode* parent;
+    std::vector<rrtNode*> children;
 
-    Node(Point position, Node* parent) : position(position), parent(parent) {}
+    rrtNode(Point position, rrtNode* parent) : position(position), parent(parent) {}
 };
 
 //cuboid obstacles
@@ -69,7 +72,7 @@ struct Cuboid {
     }
 };
 
-class RRT {
+class RRT : public rclcpp::Node {
 public:
     //Workspace bounds
     Point min_bound, max_bound;
@@ -78,8 +81,8 @@ public:
     std::vector<Cuboid> obstacles {};
 
     //Tree
-    Node* root {};
-    std::vector<Node*> nodes {};
+    rrtNode* root {};
+    std::vector<rrtNode*> nodes {};
     //this is the maximum distance between a new node and the nearest node in the tree
     double step_size;
 
@@ -90,13 +93,16 @@ public:
     std::uniform_real_distribution<double> dist_y {};
     std::uniform_real_distribution<double> dist_z {};
 
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
+
     //Constructor
     RRT(const Point &start, const Point &min_bound, const Point &max_bound, double step_size = 0.75)
-    : min_bound(min_bound), max_bound(max_bound), rng(std::random_device()()), step_size(step_size) {
+    : Node("rrt_planner"), min_bound(min_bound), max_bound(max_bound), rng(std::random_device()()), step_size(step_size) {
         
+        path_pub_ = this->create_publisher<nav_msgs::msg::Path>("rrt_path", 10);
         //initialize the tree with the start node
         std::cout << "RRT constructor" << std::endl;
-        root = new Node(start, nullptr); //nullptr means no parent
+        root = new rrtNode(start, nullptr); //nullptr means no parent
         nodes.push_back(root); 
         dist_x = std::uniform_real_distribution<double>(min_bound.x, max_bound.x); 
         dist_y = std::uniform_real_distribution<double>(min_bound.y, max_bound.y);
@@ -105,7 +111,7 @@ public:
 
     //Destructor
     ~RRT() {
-        for(Node* node : nodes) {
+        for(rrtNode* node : nodes) {
             delete node;
         }
     }
@@ -122,11 +128,11 @@ public:
     }
 
     //Find the nearest node in the tree to a given point
-    Node* nearest_node(const Point &point) {
-        Node* nearest = nullptr;
+    rrtNode* nearest_node(const Point &point) {
+        rrtNode* nearest = nullptr;
         double min_distance = std::numeric_limits<double>::infinity();
 
-        for (Node* node : nodes) {
+        for (rrtNode* node : nodes) {
             double distance = node->position.distance(point); 
             //position.distance(point) means the distance between the position of the node and the given point
             if (distance < min_distance) {
@@ -158,7 +164,7 @@ public:
     }
 
     //Extend the tree towards a point
-    Node* extend_tree(Node* nearest, const Point &to){
+    rrtNode* extend_tree(rrtNode* nearest, const Point &to){
 
         if (!is_clear_path(nearest->position, to)) {
             return nullptr;
@@ -168,7 +174,7 @@ public:
             if (!is_point_valid(to)) {
                 return nullptr;
             }
-            Node* new_node = new Node(to, nearest);
+            rrtNode* new_node = new rrtNode(to, nearest);
             nearest->children.push_back(new_node);
             nodes.push_back(new_node);
             return new_node;
@@ -190,7 +196,7 @@ public:
 
             if (is_clear_path(nearest->position, new_position)) {
                 
-                Node* new_node = new Node(new_position, nearest);
+                rrtNode* new_node = new rrtNode(new_position, nearest);
                 nearest->children.push_back(new_node);
                 nodes.push_back(new_node);
                 return new_node;
@@ -319,10 +325,10 @@ public:
             Point random = random_point();
 
             //Find the nearest node in the tree to the random point
-            Node* nearest = nearest_node(random);
+            rrtNode* nearest = nearest_node(random);
 
             //Extend the tree towards the random point
-            Node* new_node = extend_tree(nearest, random);
+            rrtNode* new_node = extend_tree(nearest, random);
 
             //Check if the new node is close to the goal
             if (new_node && new_node->position.distance(goal) < step_size) {
@@ -332,7 +338,7 @@ public:
                 if(is_clear_path(new_node->position, goal)){
                     std::cout << "Goal found!" << std::endl;
                     std::vector<Point> path;
-                    Node* current = new_node;
+                    rrtNode* current = new_node;
 
                     bool path_valid = true;
                     while (current != nullptr && current->parent != nullptr) {
@@ -354,6 +360,21 @@ public:
 
                     std::reverse(path.begin(), path.end());
                     path.push_back(goal);
+                    auto path_msg = nav_msgs::msg::Path();
+                    path_msg.header.frame_id = "map";
+                    path_msg.header.stamp = this->now();
+
+                    for (const auto& point : path) {
+                        geometry_msgs::msg::PoseStamped pose;
+                        pose.header = path_msg.header;
+                        pose.pose.position.x = point.x;
+                        pose.pose.position.y = point.y;
+                        pose.pose.position.z = point.z;
+                        pose.pose.orientation.w = 1.0;  // Default orientation
+                        path_msg.poses.push_back(pose);
+                    }
+                    path_pub_ -> publish(path_msg);
+                    RCLCPP_INFO(this->get_logger(), "Published path with %zu points", path.size());
                     return (path);
                 }
             }

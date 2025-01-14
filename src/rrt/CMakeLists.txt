@@ -10,6 +10,8 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
 # Create a library from your RRT implementation
 # This makes your RRT code available as a library that other packages can use
@@ -27,6 +29,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   std_msgs
+  nav_msgs
+  geometry_msgs
 )
 
 # Install the library binary
