@@ -11,7 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
-# Note that we're looking for 'rrt' here, not 'rrt_core'
+find_package(nav_msgs REQUIRED)
 find_package(rrt REQUIRED)
 
 # Create the visualization node executable
@@ -28,6 +28,7 @@ ament_target_dependencies(rrt_vis_node
   visualization_msgs
   geometry_msgs
   std_msgs
+  nav_msgs
   rrt
 )
 
