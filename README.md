@@ -34,16 +34,16 @@ pip install f
 <div align="center">
   <div style="display: flex; justify-content: space-between;">
     <div>
-      <img src="docs/media/rrt_demo.gif" width="250"/>
-      <p>RRT Path Planning</p>
+      <img src="docs/media/env1.gif" width="250"/>
+      <p>Env 1</p>
     </div>
     <div>
-      <img src="docs/media/control_demo.gif" width="250"/>
-      <p>Trajectory Control</p>
+      <img src="docs/media/env2.gif" width="250"/>
+      <p>Env 2</p>
     </div>
     <div>
-      <img src="docs/media/bezier_demo.gif" width="250"/>
-      <p>Bézier Smoothing</p>
+      <img src="docs/media/env3.gif" width="250"/>
+      <p>Env 3</p>
     </div>
   </div>
 </div>
