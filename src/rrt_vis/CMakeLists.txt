@@ -57,6 +57,12 @@ install(
   DESTINATION include
 )
 
+install(DIRECTORY
+  launch
+  rviz
+  DESTINATION share/${PROJECT_NAME}
+)
+
 install(
   TARGETS ${PROJECT_NAME}_lib
   EXPORT export_${PROJECT_NAME}

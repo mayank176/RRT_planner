@@ -9,12 +9,15 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <!-- Note that we're depending on 'rrt' here, not 'rrt_core' -->
+  
   <depend>rrt</depend>
   <depend>rclcpp</depend>
   <depend>visualization_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>launch</depend>
+  <depend>launch_ros</depend>
+  <depend>rviz2</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
