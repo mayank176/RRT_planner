@@ -40,7 +40,7 @@ struct Cuboid {
     }
 
     //check if a line intersects the cuboid
-    bool line_intersect(const Point &start, const Point &end, double safety_margin = 0.5) const {
+    bool line_intersect(const Point &start, const Point &end, double safety_margin = 0.7) const {
         //add safety margin to point
         Point min_with_margin(min.x - safety_margin, min.y - safety_margin, min.z - safety_margin);
         Point max_with_margin(max.x + safety_margin, max.y + safety_margin, max.z + safety_margin);
