@@ -34,15 +34,15 @@ pip install f
 <div align="center">
   <div style="display: flex; justify-content: space-between;">
     <div>
-      <img src="docs/media/env1.gif" width="250"/>
+      <img src="docs/media/env1.gif" width="33%"/>
       <p>Env 1</p>
     </div>
     <div>
-      <img src="docs/media/env2.gif" width="250"/>
+      <img src="docs/media/env2.gif" width="33%"/>
       <p>Env 2</p>
     </div>
     <div>
-      <img src="docs/media/env3.gif" width="250"/>
+      <img src="docs/media/env3.gif" width="33%"/>
       <p>Env 3</p>
     </div>
   </div>
