@@ -31,22 +31,18 @@ pip install f
 
 1. Choose an environment:
 
-<div align="center">
-  <div style="display: flex; justify-content: space-between;">
-    <div>
-      <img src="docs/media/env1.gif" width="33%"/>
-      <p>Env 1</p>
-    </div>
-    <div>
-      <img src="docs/media/env2.gif" width="33%"/>
-      <p>Env 2</p>
-    </div>
-    <div>
-      <img src="docs/media/env3.gif" width="33%"/>
-      <p>Env 3</p>
-    </div>
-  </div>
-</div>
+<p align="center">
+  <img src="docs/media/env1.gif" width="30%" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/media/env2.gif" width="30%" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/media/env3.gif" width="30%" />
+</p>
+<p align="center">
+  <em>Env 1</em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <em>Env 2</em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <em>Env 3</em>
+</p>
 
 
 To create a custom environment, change/add obstacles in rrt_vis/src/rrt_vis.cpp
