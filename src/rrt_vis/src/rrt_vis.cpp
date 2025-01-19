@@ -17,7 +17,7 @@ visualization_msgs::msg::Marker path_visualizer::create_tree_marker() {
     marker.color.r = 0.0;
     marker.color.g = 1.0;
     marker.color.b = 0.0;
-    marker.color.a = 0.5;
+    marker.color.a = 0.25;
 
     for (const auto &node : rrt_->nodes) {
         if (node->parent) {
@@ -42,7 +42,7 @@ visualization_msgs::msg::MarkerArray path_visualizer::create_obstacle_marker() {
         
     visualization_msgs::msg::MarkerArray markers;
     int id = 1;
-
+    bool is_first_obstacle = true;
     for (const auto &obstacle : rrt_->obstacles) {
 
         visualization_msgs::msg::Marker marker;
@@ -54,10 +54,20 @@ visualization_msgs::msg::MarkerArray path_visualizer::create_obstacle_marker() {
         marker.type = visualization_msgs::msg::Marker::CUBE;
         marker.action = visualization_msgs::msg::Marker::ADD;
 
-        marker.color.r = 1.0;
-        marker.color.g = 1.0;
-        marker.color.b = 1.0;
-        marker.color.a = 1.0;
+        if (is_first_obstacle) {
+            // Different color for first obstacle (e.g., reddish)
+            marker.color.r = 1.0;
+            marker.color.g = 1.0;
+            marker.color.b = 1.0;
+            marker.color.a = 1.0;
+            is_first_obstacle = false;
+        } else {
+            // Original asphalt color for other obstacles
+            marker.color.r = 0.4;
+            marker.color.g = 0.4;
+            marker.color.b = 0.45;
+            marker.color.a = 1.0;
+        }
 
         marker.pose.position.x = (obstacle.min.x + obstacle.max.x) / 2.0;
         marker.pose.position.y = (obstacle.min.y + obstacle.max.y) / 2.0;
@@ -169,15 +179,47 @@ path_visualizer::path_visualizer() : Node("path_visualizer") {
     Cuboid obstacle1(Point(-10.0, -10.0, -10.0), Point(11.0, 11.0, -9.75));
     rrt_->add_obstacle(obstacle1);
 
-    Cuboid obstacle2(Point(-8.0, -8.0, -8.0), Point(-4.0, -4.0, 0.0));
-    rrt_->add_obstacle(obstacle2);
+    //ENV 1
+    // Cuboid obstacle2(Point(-4.0, -10.0, -10.0), Point(-4.5, 4.0, 11.0));
+    // rrt_->add_obstacle(obstacle2);
+    // Cuboid obstacle3(Point(4.0, -4.0, -10.0), Point(4.5, 11.0, 11.0));
+    // rrt_->add_obstacle(obstacle3);
 
-    Cuboid obstacle3(Point(0.0, 0.0, 0.0), Point(8.0, 8.0, 8.0));
+    //ENV 2
+    // Cuboid obstacle2(Point(-4.0, -10.0, -10.0), Point(-4.5, 11.0, 4.0));
+    // rrt_->add_obstacle(obstacle2);
+    // Cuboid obstacle3(Point(-4.0, -10.0, 8.0 ), Point(-4.5, 11.0, 11.0));
+    // rrt_->add_obstacle(obstacle3);
+    // Cuboid obstacle4(Point(4.0, -10.0, -4.0), Point(4.5, 11.0, 11.0));
+    // rrt_->add_obstacle(obstacle4);
+    // Cuboid obstacle5(Point(4.0, -10.0, -10.0 ), Point(4.5, 11.0, -7.0));
+    // rrt_->add_obstacle(obstacle5);    
+
+    //ENV 3
+    Cuboid obstacle2(Point(-8.0, -8.0, -10.0), Point(-6.0, -6.0, 11.0));
+    rrt_->add_obstacle(obstacle2);
+    Cuboid obstacle3(Point(0.0, 0.0, -10.0), Point(-3.0, -3.0, 11.0));
     rrt_->add_obstacle(obstacle3);
+    Cuboid obstacle4(Point(2.0, 0.0, -10.0), Point(4.0, 2.0, 8.0));
+    rrt_->add_obstacle(obstacle4);
+    Cuboid obstacle5(Point(5.0, 5.0, -10.0), Point(8.0, 8.0, 8.0));
+    rrt_->add_obstacle(obstacle5);
+    Cuboid obstacle6(Point(-9.0, 1.0, -10.0), Point(-6.0, -3.0, 11.0));
+    rrt_->add_obstacle(obstacle6);
+    Cuboid obstacle7(Point(9.0, -1.0, -10.0), Point(6.0, 3.0, 8.0));
+    rrt_->add_obstacle(obstacle7);
+    Cuboid obstacle8(Point(-1.0, -9.0, -10.0), Point(3.0, -6.0, 8.0));
+    rrt_->add_obstacle(obstacle8);
+    Cuboid obstacle9(Point(8.0, -9.0, -10.0), Point(6.0, -6.0, 8.0));
+    rrt_->add_obstacle(obstacle9);
+    Cuboid obstacle10(Point(-8.0, 9.0, -10.0), Point(-6.0, 6.0, 8.0));
+    rrt_->add_obstacle(obstacle10);
+    Cuboid obstacle11(Point(-1.0, 7.0, -10.0), Point(1.0, 5.0, 11.0));
+    rrt_->add_obstacle(obstacle11);
     
     using namespace std::chrono_literals;
     timer_ = this->create_wall_timer(
-        500ms, 
+        10ms, 
         std::bind(&path_visualizer::visualize_and_plan, this));
 
     RCLCPP_INFO(this->get_logger(), "Path visualizer node has been started.");
