@@ -3,9 +3,14 @@ from launch_ros.actions import Node
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch.actions import DeclareLaunchArgument
+from ament_index_python.packages import get_package_share_directory
 import os
 
 def generate_launch_description():
+
+    pkg_dir = get_package_share_directory('rrt_vis')
+    config_file = os.path.join(pkg_dir, 'config', 'rrt_params.yaml')
+    
     
     rviz_arg = DeclareLaunchArgument(
         'rviz',
@@ -14,7 +19,7 @@ def generate_launch_description():
     )
 
 
-    rviz_config_path = os.path.expanduser('~/.rviz2/rrt_vis_conf.rviz')
+    rviz_config_path = os.path.expanduser('~/Documents/RRT_planner/src/rrt_vis/rviz/rrt_vis_conf.rviz')
 
     return LaunchDescription([
         rviz_arg,
@@ -30,12 +35,14 @@ def generate_launch_description():
         Node(
             package='mpc',
             executable='mpc_node',
-            name='mpc_node'
+            name='mpc_node',
+            parameters=[config_file]
         ),
         
         Node(
             package='rrt_vis',
             executable='rrt_vis_node',
-            name='rrt_vis_node'
+            name='rrt_vis_node',
+            parameters =[config_file]
         )
     ])

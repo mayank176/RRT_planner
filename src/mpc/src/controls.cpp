@@ -1,12 +1,25 @@
 #include "controls.h"
 
-NLPDController::NLPDController() {
-    Kp = Eigen::Vector3d(8, 8, 12).asDiagonal();
-    Kd = Eigen::Vector3d(5.5, 5.5, 8).asDiagonal();
-    K_R = Eigen::Vector3d(100, 100, 10).asDiagonal();
-    K_w = Eigen::Vector3d(20, 20, 10).asDiagonal();
+NLPDController::NLPDController(rclcpp::Node* parent_node) {
     
-    
+    kp_x = parent_node->get_parameter("kp_x").as_double();
+    kp_y = parent_node->get_parameter("kp_y").as_double();
+    kp_z = parent_node->get_parameter("kp_z").as_double();
+    kd_x = parent_node->get_parameter("kd_x").as_double();
+    kd_y = parent_node->get_parameter("kd_y").as_double();
+    kd_z = parent_node->get_parameter("kd_z").as_double();
+    kr_x = parent_node->get_parameter("kr_x").as_double();
+    kr_y = parent_node->get_parameter("kr_y").as_double();
+    kr_z = parent_node->get_parameter("kr_z").as_double();
+    kw_x = parent_node->get_parameter("kw_x").as_double();
+    kw_y = parent_node->get_parameter("kw_y").as_double();
+    kw_z = parent_node->get_parameter("kw_z").as_double();
+
+    Kp = Eigen::Vector3d(kp_x, kp_y, kp_z).asDiagonal(); //8, 8, 12
+    Kd = Eigen::Vector3d(kd_x, kd_y, kd_z).asDiagonal(); //5.5, 5.5, 8
+    K_R = Eigen::Vector3d(kr_x, kr_y, kr_z).asDiagonal(); // 100,100,10
+    K_w = Eigen::Vector3d(kw_x, kw_y, kw_z).asDiagonal(); // 20,20,10
+
     mass = 0.030;  // kg
     g = 9.81;      // m/s^2
     arm_length = 0.046;  // m
@@ -24,23 +37,23 @@ Eigen::Vector4d NLPDController::control(const DesiredState& desired_state, const
     Eigen::Vector3d error_pos = current_state.position - desired_state.position;  
     Eigen::Vector3d error_vel = current_state.velocity - desired_state.velocity;
 
-    RCLCPP_INFO(rclcpp::get_logger("pd_controller"),
-        "Position error: (%f, %f, %f), Velocity error: (%f, %f, %f)",
-        error_pos.x(), error_pos.y(), error_pos.z(),
-        error_vel.x(), error_vel.y(), error_vel.z());
+    // RCLCPP_INFO(rclcpp::get_logger("pd_controller"),
+    //     "Position error: (%f, %f, %f), Velocity error: (%f, %f, %f)",
+    //     error_pos.x(), error_pos.y(), error_pos.z(),
+    //     error_vel.x(), error_vel.y(), error_vel.z());
 
     Eigen::Vector3d rdd_des = desired_state.acceleration - Kd * error_vel - Kp * error_pos;
     std::cout << "desired_state.acceleration:" << desired_state.acceleration << std::endl;
 
-    RCLCPP_INFO(rclcpp::get_logger("pd_controller"),
-        "rdd_des: (%f, %f, %f)",
-        rdd_des.x(), rdd_des.y(), rdd_des.z());
+    // RCLCPP_INFO(rclcpp::get_logger("pd_controller"),
+    //     "rdd_des: (%f, %f, %f)",
+    //     rdd_des.x(), rdd_des.y(), rdd_des.z());
     
     Eigen::Vector3d F_des = mass * rdd_des + Eigen::Vector3d(0, 0, mass * g);
     
-    RCLCPP_INFO(rclcpp::get_logger("pd_controller"),
-        "F_des: (%f, %f, %f)",
-        F_des.x(), F_des.y(), F_des.z());
+    // RCLCPP_INFO(rclcpp::get_logger("pd_controller"),
+    //     "F_des: (%f, %f, %f)",
+    //     F_des.x(), F_des.y(), F_des.z());
     
     Eigen::Matrix3d R = Eigen::Quaterniond(
         current_state.quaternion[3],  // w
@@ -52,8 +65,8 @@ Eigen::Vector4d NLPDController::control(const DesiredState& desired_state, const
     Eigen::Vector3d b3 = R.col(2);
     
     double u1 = b3.dot(F_des);
-    RCLCPP_INFO(rclcpp::get_logger("pd_controller"),
-    "u1 (thrust): %f", u1);
+    // RCLCPP_INFO(rclcpp::get_logger("pd_controller"),
+    // "u1 (thrust): %f", u1);
     
     Eigen::Vector3d b3_des = F_des.normalized();
     Eigen::Vector3d a_psi(

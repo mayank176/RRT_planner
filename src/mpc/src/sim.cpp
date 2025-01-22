@@ -11,7 +11,7 @@ QuadrotorEnv::QuadrotorEnv() : quadrotor() {
     vel_limits = 5.0;   // Velocity limits in m/s
     angle_limits = M_PI / 6;  // Angular limits in radians
     rate_limits = 2.0;  // Angular rate limits in rad/s
-    goal_threshold = 0.1; // Distance threshold for reaching goal
+    goal_threshold = 1.0; // Distance threshold for reaching goal
 }
 
 State QuadrotorEnv::reset(const Eigen::Vector3d& position) {
@@ -26,7 +26,7 @@ QuadrotorEnv::EnvState QuadrotorEnv::step(const Eigen::Vector4d& action, const E
     time_step++;
 
     // Calculate reward and done condition
-    double reward = calculateReward();
+    double reward = calculateReward(goal_pos);
     bool done = isTerminal();
 
     double end_pos_error = sqnorm_err(goal_pos, current_state.position);
@@ -42,9 +42,9 @@ QuadrotorEnv::EnvState QuadrotorEnv::step(const Eigen::Vector4d& action, const E
 }
 
 
-double QuadrotorEnv::calculateReward() {
+double QuadrotorEnv::calculateReward(const Eigen::Vector3d& goal_pos) {
     
-    double distance_penalty = calculateDistanceToGoal();
+    double distance_penalty = calculateDistanceToGoal(goal_pos);
     double velocity_penalty = current_state.velocity.norm();
     double orientation_penalty = 1.0 - current_state.quaternion[3]; 
     
@@ -102,13 +102,12 @@ bool QuadrotorEnv::isTerminal() {
     return false;
 }
 
-double QuadrotorEnv::calculateDistanceToGoal() { //need to change
+double QuadrotorEnv::calculateDistanceToGoal(const Eigen::Vector3d& goal_pos) { //need to change
     
-    Eigen::Vector3d goal(2, 2, 2);  // Example goal
-    return (current_state.position - goal).norm();
+    return (current_state.position - goal_pos).norm();
 }
 
-Trajectory::Trajectory(double dt) : t(0), dt(dt) {}
+
 
 std::string Trajectory::getName() const { return name; }
 
@@ -129,9 +128,6 @@ Eigen::Vector3d Trajectory::tj_from_line(const Eigen::Vector3d& start_pos,
     return pos;
 }
 
-
-HoverTrajectory::HoverTrajectory(double dt, double hoverHeight, double T) 
-    : Trajectory(dt), hoverHeight(hoverHeight), T(T) {}
 
 DesiredState HoverTrajectory::getDesState(double t) {
     this->t = t;
@@ -197,12 +193,11 @@ std::vector<double> CustomTrajectory::divideTimeFromPath(const std::vector<Eigen
 }
 
 
-CustomTrajectory::CustomTrajectory(double dt, const std::vector<Eigen::Vector3d>& trajectory, double time, 
+CustomTrajectory::CustomTrajectory(double dt, const std::vector<Eigen::Vector3d>& trajectory, double T, 
                 const std::string& name)
-    : Trajectory(dt)
-    , T(time)
-    , traj(trajectory)
-    , waypointIndex(0) 
+    : Trajectory(dt,T), 
+      traj(trajectory),
+      waypointIndex(0) 
 {
     this->name = name;
     tArr = divideTimeFromPath(traj, T);
@@ -277,7 +272,7 @@ void QuadrotorController::path_callback(const nav_msgs::msg::Path::SharedPtr msg
     }
     
     // Create a custom trajectory from the RRT path
-    trajectory_ = std::make_unique<CustomTrajectory>(0.01, waypoints);
+    trajectory_ = std::make_unique<CustomTrajectory>(0.01, waypoints, simulation_time);
 
     // Reset simulation state
     if (!waypoints.empty()) {
@@ -348,14 +343,13 @@ visualization_msgs::msg::Marker QuadrotorController::create_quadrotor_marker(con
     return marker;
 }
 
-    void QuadrotorController::simulate_step() {
+void QuadrotorController::simulate_step() {
     if (!path_received_ || !trajectory_) {
         return;
     }
 
     static bool initialized = false;
     static double t = 0.0;
-    static double simulation_time = 15.0;
     static State current_state;
     static DesiredState end_state;
     static DesiredState start_state;
@@ -363,12 +357,12 @@ visualization_msgs::msg::Marker QuadrotorController::create_quadrotor_marker(con
     if (!initialized) {
         start_state = trajectory_->getDesState(t);
         RCLCPP_INFO(this->get_logger(), "Start state: %f, %f, %f, %f", start_state.position.x(), start_state.position.y(), start_state.position.z(), t);
-        end_state = trajectory_->getDesState(simulation_time);
+        end_state = trajectory_->getDesState(this->simulation_time);
         current_state = quad_env_->reset(start_state.position);
         initialized = true;
     }
 
-    if (t >= simulation_time) {
+    if (t == simulation_time) {
         RCLCPP_INFO(this->get_logger(), "Simulation complete");
         return;
     }
@@ -377,10 +371,11 @@ visualization_msgs::msg::Marker QuadrotorController::create_quadrotor_marker(con
     // std::cout << "desired_traj_state_ct: " << desired_traj_state.position.transpose() << std::endl;
 
     auto motor_speeds = controller_->control(desired_traj_state, current_state);
+    //auto motor_speeds = controller_->solve(current_state, desired_traj_state);
 
     
-    RCLCPP_INFO(this->get_logger(), "Motor speeds: %f, %f, %f, %f",
-            motor_speeds[0], motor_speeds[1], motor_speeds[2], motor_speeds[3]);
+    // RCLCPP_INFO(this->get_logger(), "Motor speeds: %f, %f, %f, %f",
+    //         motor_speeds[0], motor_speeds[1], motor_speeds[2], motor_speeds[3]);
 
 
     auto env_state = quad_env_->step(motor_speeds, end_state.position);//desired_traj_state.position); // or use end_state.position check
@@ -403,9 +398,24 @@ visualization_msgs::msg::Marker QuadrotorController::create_quadrotor_marker(con
 QuadrotorController::QuadrotorController() 
     : Node("quadrotor_controller"),
         current_waypoint_(0),
-        path_received_(false),
-        waypoint_threshold_(0.5)
+        path_received_(false)
 {
+    this->declare_parameter("simulation_time", 25.0);
+    this->declare_parameter("kp_x", 8.0);
+    this->declare_parameter("kp_y", 8.0);
+    this->declare_parameter("kp_z", 12.0);
+    this->declare_parameter("kd_x", 5.5);
+    this->declare_parameter("kd_y", 5.5);
+    this->declare_parameter("kd_z", 8.0);
+    this->declare_parameter("kr_x", 100.0);
+    this->declare_parameter("kr_y", 100.0);
+    this->declare_parameter("kr_z", 10.0);
+    this->declare_parameter("kw_x", 20.0);
+    this->declare_parameter("kw_y", 20.0);
+    this->declare_parameter("kw_z", 10.0);
+    
+    simulation_time = this->get_parameter("simulation_time").as_double();
+
     viz_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
         "quadrotor_visualization", 10);
     path_subscriber_ = this->create_subscription<nav_msgs::msg::Path>(
@@ -413,7 +423,8 @@ QuadrotorController::QuadrotorController()
         std::bind(&QuadrotorController::path_callback, this, std::placeholders::_1));
     
     quad_env_ = std::make_unique<QuadrotorEnv>();
-    controller_ = std::make_unique<NLPDController>();
+    controller_ = std::make_unique<NLPDController>(this);
+    //controller_ = std::make_unique<QuadrotorMPC>(this);
     
     using namespace std::chrono_literals;
     sim_timer_ = this->create_wall_timer(

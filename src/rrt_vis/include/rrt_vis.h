@@ -8,7 +8,7 @@
 #include <visualization_msgs/msg/marker_array.hpp>
 #include "../../rrt/include/rrt.h"
 
-class path_visualizer : public rclcpp::Node {
+class path_visualizer : public rclcpp::Node, public std::enable_shared_from_this<path_visualizer> {
 private:
         rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_publisher_;
         std::unique_ptr<RRT> rrt_;

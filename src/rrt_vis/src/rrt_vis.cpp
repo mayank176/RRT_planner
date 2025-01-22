@@ -17,7 +17,7 @@ visualization_msgs::msg::Marker path_visualizer::create_tree_marker() {
     marker.color.r = 0.0;
     marker.color.g = 1.0;
     marker.color.b = 0.0;
-    marker.color.a = 0.25;
+    marker.color.a = 0.1;
 
     for (const auto &node : rrt_->nodes) {
         if (node->parent) {
@@ -55,14 +55,12 @@ visualization_msgs::msg::MarkerArray path_visualizer::create_obstacle_marker() {
         marker.action = visualization_msgs::msg::Marker::ADD;
 
         if (is_first_obstacle) {
-            // Different color for first obstacle (e.g., reddish)
             marker.color.r = 1.0;
             marker.color.g = 1.0;
             marker.color.b = 1.0;
             marker.color.a = 1.0;
             is_first_obstacle = false;
         } else {
-            // Original asphalt color for other obstacles
             marker.color.r = 0.4;
             marker.color.g = 0.4;
             marker.color.b = 0.45;
@@ -128,7 +126,6 @@ void path_visualizer::visualize_and_plan() {
         marker_array.markers.push_back(path_marker);
     } else if (!planning_in_progress_){
         planning_in_progress_ = true;
-        Point goal(10.0, 10.0, 10.0);
         
         // Set up callback for tree visualization
         rrt_->visualization_callback = [this](const std::vector<rrtNode*>& nodes) {
@@ -140,17 +137,17 @@ void path_visualizer::visualize_and_plan() {
             
             // Add obstacle markers
             auto obstacle_markers = create_obstacle_marker();
-            update_markers.markers.insert(update_markers.markers.end(), 
-                obstacle_markers.markers.begin(), obstacle_markers.markers.end());
+            update_markers.markers.insert(  update_markers.markers.end(), 
+                                            obstacle_markers.markers.begin(), 
+                                            obstacle_markers.markers.end());
             
             marker_publisher_->publish(update_markers);
             
             // Add small delay to make visualization visible
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
         };
 
-        path_ = rrt_->find_rrt_path(goal, 10000);
+        path_ = rrt_->find_rrt_path();
         planning_in_progress_ = false;
         if (!path_.empty()){
             //print path_
@@ -169,57 +166,70 @@ path_visualizer::path_visualizer() : Node("path_visualizer") {
 
     marker_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 10);
 
-    Point start(-9.0, -9.0, -9.0);
-    Point goal(10.0, 10.0, 10.0);
-    Point min_bound(-10.0, -10.0, -10.0);
-    Point max_bound(11.0, 11.0, 11.0);
+    this->declare_parameter("min_bound_x", -10.0);
+    this->declare_parameter("min_bound_y", -10.0);
+    this->declare_parameter("min_bound_z", -10.0);
+    this->declare_parameter("max_bound_x", 11.0);
+    this->declare_parameter("max_bound_y", 11.0);
+    this->declare_parameter("max_bound_z", 11.0);
+    this->declare_parameter("step_size", 0.75);
+    this->declare_parameter("safety_margin", 0.7);
+    this->declare_parameter("max_iterations", 10000);
+    
+    this->declare_parameter("start_x", -9.0);
+    this->declare_parameter("start_y", -9.0);
+    this->declare_parameter("start_z", -9.0);
+    this->declare_parameter("goal_x", 10.0);
+    this->declare_parameter("goal_y", 10.0);
+    this->declare_parameter("goal_z", 10.0);
+    this->declare_parameter("environment_num", 1);
 
-    rrt_ = std::make_unique<RRT>(start, min_bound, max_bound);
+    rrt_ = std::make_unique<RRT>(this);
 
     Cuboid obstacle1(Point(-10.0, -10.0, -10.0), Point(11.0, 11.0, -9.75));
     rrt_->add_obstacle(obstacle1);
-
-    //ENV 1
-    // Cuboid obstacle2(Point(-4.0, -10.0, -10.0), Point(-4.5, 4.0, 11.0));
-    // rrt_->add_obstacle(obstacle2);
-    // Cuboid obstacle3(Point(4.0, -4.0, -10.0), Point(4.5, 11.0, 11.0));
-    // rrt_->add_obstacle(obstacle3);
-
-    //ENV 2
-    // Cuboid obstacle2(Point(-4.0, -10.0, -10.0), Point(-4.5, 11.0, 4.0));
-    // rrt_->add_obstacle(obstacle2);
-    // Cuboid obstacle3(Point(-4.0, -10.0, 8.0 ), Point(-4.5, 11.0, 11.0));
-    // rrt_->add_obstacle(obstacle3);
-    // Cuboid obstacle4(Point(4.0, -10.0, -4.0), Point(4.5, 11.0, 11.0));
-    // rrt_->add_obstacle(obstacle4);
-    // Cuboid obstacle5(Point(4.0, -10.0, -10.0 ), Point(4.5, 11.0, -7.0));
-    // rrt_->add_obstacle(obstacle5);    
-
-    //ENV 3
-    Cuboid obstacle2(Point(-8.0, -8.0, -10.0), Point(-6.0, -6.0, 11.0));
-    rrt_->add_obstacle(obstacle2);
-    Cuboid obstacle3(Point(0.0, 0.0, -10.0), Point(-3.0, -3.0, 11.0));
-    rrt_->add_obstacle(obstacle3);
-    Cuboid obstacle4(Point(2.0, 0.0, -10.0), Point(4.0, 2.0, 8.0));
-    rrt_->add_obstacle(obstacle4);
-    Cuboid obstacle5(Point(5.0, 5.0, -10.0), Point(8.0, 8.0, 8.0));
-    rrt_->add_obstacle(obstacle5);
-    Cuboid obstacle6(Point(-9.0, 1.0, -10.0), Point(-6.0, -3.0, 11.0));
-    rrt_->add_obstacle(obstacle6);
-    Cuboid obstacle7(Point(9.0, -1.0, -10.0), Point(6.0, 3.0, 8.0));
-    rrt_->add_obstacle(obstacle7);
-    Cuboid obstacle8(Point(-1.0, -9.0, -10.0), Point(3.0, -6.0, 8.0));
-    rrt_->add_obstacle(obstacle8);
-    Cuboid obstacle9(Point(8.0, -9.0, -10.0), Point(6.0, -6.0, 8.0));
-    rrt_->add_obstacle(obstacle9);
-    Cuboid obstacle10(Point(-8.0, 9.0, -10.0), Point(-6.0, 6.0, 8.0));
-    rrt_->add_obstacle(obstacle10);
-    Cuboid obstacle11(Point(-1.0, 7.0, -10.0), Point(1.0, 5.0, 11.0));
-    rrt_->add_obstacle(obstacle11);
+    if (rrt_->env_num == 1){
+        Cuboid obstacle2(Point(-4.0, -10.0, -10.0), Point(-4.5, 4.0, 11.0));
+        rrt_->add_obstacle(obstacle2);
+        Cuboid obstacle3(Point(4.0, -4.0, -10.0), Point(4.5, 11.0, 11.0));
+        rrt_->add_obstacle(obstacle3);
+    }
+    if (rrt_->env_num == 2){
+        Cuboid obstacle2(Point(-4.0, -10.0, -10.0), Point(-4.5, 11.0, 4.0));
+        rrt_->add_obstacle(obstacle2);
+        Cuboid obstacle3(Point(-4.0, -10.0, 8.0 ), Point(-4.5, 11.0, 11.0));
+        rrt_->add_obstacle(obstacle3);
+        Cuboid obstacle4(Point(4.0, -10.0, -4.0), Point(4.5, 11.0, 11.0));
+        rrt_->add_obstacle(obstacle4);
+        Cuboid obstacle5(Point(4.0, -10.0, -10.0 ), Point(4.5, 11.0, -7.0));
+        rrt_->add_obstacle(obstacle5);
+    }
+    if (rrt_->env_num == 3){
+        Cuboid obstacle2(Point(-8.0, -8.0, -10.0), Point(-6.0, -6.0, 11.0));
+        rrt_->add_obstacle(obstacle2);
+        Cuboid obstacle3(Point(0.0, 0.0, -10.0), Point(-3.0, -3.0, 11.0));
+        rrt_->add_obstacle(obstacle3);
+        Cuboid obstacle4(Point(2.0, 0.0, -10.0), Point(4.0, 2.0, 11.0));//8
+        rrt_->add_obstacle(obstacle4);
+        Cuboid obstacle5(Point(5.0, 5.0, -10.0), Point(8.0, 8.0, 11.0));//8
+        rrt_->add_obstacle(obstacle5);
+        Cuboid obstacle6(Point(-9.0, 1.0, -10.0), Point(-6.0, -3.0, 11.0));
+        rrt_->add_obstacle(obstacle6);
+        Cuboid obstacle7(Point(9.0, -1.0, -10.0), Point(6.0, 3.0, 11.0));//8
+        rrt_->add_obstacle(obstacle7);
+        Cuboid obstacle8(Point(-1.0, -9.0, -10.0), Point(3.0, -6.0, 11.0));//8
+        rrt_->add_obstacle(obstacle8);
+        Cuboid obstacle9(Point(8.0, -9.0, -10.0), Point(6.0, -6.0, 11.0));//8
+        rrt_->add_obstacle(obstacle9);
+        Cuboid obstacle10(Point(-8.0, 9.0, -10.0), Point(-6.0, 6.0,11.0));//8
+        rrt_->add_obstacle(obstacle10);
+        Cuboid obstacle11(Point(-1.0, 7.0, -10.0), Point(1.0, 5.0, 11.0));
+        rrt_->add_obstacle(obstacle11);
+    }
     
     using namespace std::chrono_literals;
     timer_ = this->create_wall_timer(
-        10ms, 
+        100ms, 
         std::bind(&path_visualizer::visualize_and_plan, this));
 
     RCLCPP_INFO(this->get_logger(), "Path visualizer node has been started.");

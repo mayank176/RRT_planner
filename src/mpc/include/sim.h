@@ -18,10 +18,10 @@ private:
     double angle_limits;
     double rate_limits;
 
-    double calculateReward();
+    double calculateReward(const Eigen::Vector3d& goal_pos);
     Eigen::Vector3d getEulerAngles(const Eigen::Quaterniond& q);
     bool isTerminal();
-    double calculateDistanceToGoal();
+    double calculateDistanceToGoal(const Eigen::Vector3d& goal_pos);
     double sqnorm_err(const Eigen::Vector3d& v1, const Eigen::Vector3d& v2);
 
 public:
@@ -42,6 +42,7 @@ class Trajectory {
 protected:
     double t;
     double dt;
+    double T;
     std::string name;
 
     static Eigen::Vector3d tj_from_line(const Eigen::Vector3d& start_pos, 
@@ -49,8 +50,8 @@ protected:
                                       double time_ttl, 
                                       double t_c);
 public:
-    Trajectory(double dt);
-    virtual ~Trajectory() = default;
+    Trajectory(double dt, double simulation_time) 
+        : t(0), dt(dt), T(simulation_time) {}
     std::string getName() const;
     virtual DesiredState getDesState(double t) = 0;
 };
@@ -61,7 +62,8 @@ private:
     double hoverHeight;
     double T;
 public:
-    HoverTrajectory(double dt, double hoverHeight = 2.0, double T = 5.0);
+    HoverTrajectory(double dt, double T,  double hover_height = 2.0) 
+        : Trajectory(dt, T), hoverHeight(hover_height) {}
     DesiredState getDesState(double t) override;
 };
 
@@ -75,7 +77,7 @@ private:
     std::vector<double> divideTimeFromPath(const std::vector<Eigen::Vector3d>& path, double T);
 
 public:
-    CustomTrajectory(double dt, const std::vector<Eigen::Vector3d>& trajectory, double time = 15.0, 
+    CustomTrajectory(double dt, const std::vector<Eigen::Vector3d>& trajectory, double T,
                     const std::string& name = "Custom");
     DesiredState getDesState(double t) override;
 };
@@ -88,6 +90,7 @@ private:
     
     std::unique_ptr<QuadrotorEnv> quad_env_;
     std::unique_ptr<NLPDController> controller_;
+    // std::unique_ptr<QuadrotorMPC> controller_;
     std::unique_ptr<Trajectory> trajectory_;
     
     std::vector<Eigen::Vector3d> planned_path_;
@@ -95,13 +98,13 @@ private:
 
     size_t current_waypoint_;
     bool path_received_;
-    double waypoint_threshold_;
 
     void path_callback(const nav_msgs::msg::Path::SharedPtr msg);
     visualization_msgs::msg::Marker create_executed_path_marker();
     visualization_msgs::msg::Marker create_quadrotor_marker(const State& state);
     void simulate_step();
 public:
+    double simulation_time;
     QuadrotorController();
 };
 
