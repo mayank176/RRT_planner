@@ -1,0 +1,40 @@
+# config/rrt_params.yaml
+
+/**:  # This applies to all nodes
+  ros__parameters:
+# Environment bounds
+    min_bound_x: -10.0
+    min_bound_y: -10.0
+    min_bound_z: -10.0
+    max_bound_x: 11.0
+    max_bound_y: 11.0
+    max_bound_z: 11.0
+    environment_num: 1
+    simulation_time: 25.0
+
+    # Starting position
+    start_x: -9.0
+    start_y: -9.0
+    start_z: -9.0
+    goal_x: 10.0
+    goal_y: 10.0
+    goal_z: 10.0
+
+    # RRT parameters
+    step_size: 0.75
+    safety_margin: 0.7
+    max_iterations: 10000 
+    
+    #NLPD Gains
+    kp_x: 8.0
+    kp_y: 8.0
+    kp_z: 12.0
+    kd_x: 5.5
+    kd_y: 5.5
+    kd_z: 12.0
+    kr_x: 100.0
+    kr_y: 100.0
+    kr_z: 10.0
+    kw_x: 20.0
+    kw_y: 20.0
+    kw_z: 10.0
