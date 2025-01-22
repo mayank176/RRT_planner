@@ -1,8 +1,87 @@
 #include "rrt.h"
 
-RRT::RRT(const Point &start, const Point &min_bound, const Point &max_bound, double step_size)
-: Node("rrt_planner"), min_bound(min_bound), max_bound(max_bound), rng(std::random_device()()), step_size(step_size) {
+Point::Point(double x, double y, double z) : x(x), y(y), z(z) {}
+
+Cuboid::Cuboid(Point min_, Point max_) : min(min_), max(max_) {
+        // Ensure min is actually less than max in all dimensions
+        Point true_min(
+            std::min(min_.x, max_.x),
+            std::min(min_.y, max_.y),
+            std::min(min_.z, max_.z)
+        );
+        Point true_max(
+            std::max(min_.x, max_.x),
+            std::max(min_.y, max_.y),
+            std::max(min_.z, max_.z)
+        );
+        min = true_min;
+        max = true_max;
+        }
+
+bool Cuboid::point_intersect(const Point &point, double safety_margin) const {
     
+    bool x_in = point.x >= (min.x - safety_margin) && point.x <= (max.x + safety_margin);
+    bool y_in = point.y >= (min.y - safety_margin) && point.y <= (max.y + safety_margin);
+    bool z_in = point.z >= (min.z - safety_margin) && point.z <= (max.z + safety_margin);
+    return x_in && y_in && z_in;
+}
+
+bool Cuboid::line_intersect(const Point &start, const Point &end, double safety_margin) const {
+    
+    Point min_with_margin(min.x - safety_margin, min.y - safety_margin, min.z - safety_margin);
+    Point max_with_margin(max.x + safety_margin, max.y + safety_margin, max.z + safety_margin);
+    
+    double dx = end.x - start.x;
+    double dy = end.y - start.y;
+    double dz = end.z - start.z;
+    double total_distance = std::sqrt(dx*dx + dy*dy + dz*dz);
+
+    const double step_size = 0.1;
+    int num_steps = std::ceil(total_distance / step_size);
+    
+    double step_dx = dx / total_distance * step_size;
+    double step_dy = dy / total_distance * step_size;
+    double step_dz = dz / total_distance * step_size;
+
+    for (int i = 0; i <= num_steps; i++) {
+        Point sample_pos(
+            start.x + i * step_dx,
+            start.y + i * step_dy,
+            start.z + i * step_dz
+        );
+        if (point_intersect(sample_pos, safety_margin)) {
+            return true;  // Found a collision
+        }
+    }
+    return false;
+}
+    
+
+RRT::RRT(rclcpp::Node* parent_node) 
+: Node("rrt_planner") {
+    
+    min_bound = Point(  parent_node->get_parameter("min_bound_x").as_double(),
+                        parent_node->get_parameter("min_bound_y").as_double(),
+                        parent_node->get_parameter("min_bound_z").as_double()
+    );
+    max_bound = Point(  parent_node->get_parameter("max_bound_x").as_double(),
+                        parent_node->get_parameter("max_bound_y").as_double(),
+                        parent_node->get_parameter("max_bound_z").as_double()
+    );
+    start = Point(  parent_node->get_parameter("start_x").as_double(),
+                    parent_node->get_parameter("start_y").as_double(),
+                    parent_node->get_parameter("start_z").as_double()
+    );
+    goal = Point(   parent_node->get_parameter("goal_x").as_double(),
+                    parent_node->get_parameter("goal_y").as_double(),
+                    parent_node->get_parameter("goal_z").as_double()
+    );
+
+    step_size = parent_node->get_parameter("step_size").as_double();
+    safety_margin = parent_node->get_parameter("safety_margin").as_double();        
+    max_iterations = parent_node->get_parameter("max_iterations").as_int();
+    env_num = parent_node->get_parameter("environment_num").as_int();
+
     path_pub_ = this->create_publisher<nav_msgs::msg::Path>("rrt_path", 10);
     //initialize the tree with the start node
     std::cout << "RRT constructor" << std::endl;
@@ -21,7 +100,7 @@ RRT::~RRT() {
 
 void RRT::add_obstacle(const Cuboid &obstacle) {
     obstacles.push_back(obstacle);
-    std::cout << "Obstacle added!" << std::endl;
+    RCLCPP_INFO(this->get_logger(), "obstacle added");
 }
 
 Point RRT::random_point() {
@@ -48,7 +127,7 @@ rrtNode* RRT::nearest_node(const Point &point) {
 bool RRT::is_clear_path(const Point &start, const Point &end){
 
     for (const Cuboid &obstacle : obstacles) {
-        if (obstacle.line_intersect(start, end)) {
+        if (obstacle.line_intersect(start, end, safety_margin)) {
             return false;
         }
     }
@@ -57,7 +136,7 @@ bool RRT::is_clear_path(const Point &start, const Point &end){
 
 bool RRT::is_point_valid(const Point &point) {
     for (const auto &obstacle : obstacles) {
-        if (obstacle.point_intersect(point)) {
+        if (obstacle.point_intersect(point, safety_margin)) {
             return false;
         }
     }
@@ -106,120 +185,58 @@ rrtNode* RRT::extend_tree(rrtNode* nearest, const Point &to){
     return nullptr;
 }
 
-//compute values of cubic bezier curve
-//B(t) = (1-t)^3 * P0 + 3(1-t)^2 * t * P1 + 3(1-t) * t^2 * P2 + t^3 * P3
-Point RRT::bezier_point(const Point &p0, const Point &p1, const Point &p2, const Point &p3, double t){
-    return Point(
-        (1-t)*(1-t)*(1-t)*p0.x + 3*(1-t)*(1-t)*t*p1.x + 3*(1-t)*t*t*p2.x + t*t*t*p3.x,
-        (1-t)*(1-t)*(1-t)*p0.y + 3*(1-t)*(1-t)*t*p1.y + 3*(1-t)*t*t*p2.y + t*t*t*p3.y,
-        (1-t)*(1-t)*(1-t)*p0.z + 3*(1-t)*(1-t)*t*p1.z + 3*(1-t)*t*t*p2.z + t*t*t*p3.z
-    );
+//Evaluate a Bezier curve using De Casteljau's algorithm
+Point RRT::evaluate_bezier_de_casteljau(const std::vector<Point>& control_points, double t) {
+    if (control_points.size() == 1) return control_points[0];
+    
+    std::vector<Point> points = control_points;
+    
+    // Apply de Casteljau's algorithm
+    for (size_t r = 1; r < control_points.size(); ++r) {
+        for (size_t i = 0; i < control_points.size() - r; ++i) {
+            points[i] = Point(
+                (1.0 - t) * points[i].x + t * points[i + 1].x,
+                (1.0 - t) * points[i].y + t * points[i + 1].y,
+                (1.0 - t) * points[i].z + t * points[i + 1].z
+            );
+        }
+    }
+    return points[0];
 }
 
-Point RRT::random_control_point(const Point &anchor, const Point &guide, double min_ratio = 0.1, double max_ratio = 0.9) {
-    
-    double ratio = min_ratio + (max_ratio - min_ratio) * (static_cast<double>(rand()) / RAND_MAX);
-    
-    return Point(
-        ratio * anchor.x + (1 - ratio) * guide.x,
-        ratio * anchor.y + (1 - ratio) * guide.y,
-        ratio * anchor.z + (1 - ratio) * guide.z
-    );
-}
-
-std::vector<Point> RRT::bezier_path(const std::vector<Point> &path, int points_per_segment = 50, int window_size = 5, int max_attempts = 100) {
-    if (path.size() < window_size) return path;
-    
+std::vector<Point> RRT::smooth_rrt_path(const std::vector<Point>& rrt_path) {
     std::vector<Point> smoothed_path;
-    smoothed_path.push_back(path[0]); 
     
-    for (size_t i = 0; i < path.size() - 1; i += window_size-1) {
-        // Get window of points for this segment
-        std::vector<Point> window;
-        for (size_t j = 0; j < window_size && (i + j) < path.size(); j++) {
-            window.push_back(path[i + j]);
-        }
+    size_t i = 0;
+    while(i < rrt_path.size() - 1) {  
         
-        bool found_valid_curve = false;
-        std::vector<Point> best_segment;
-        
-        // Try multiple times to find a valid bezier curve
-        for (int attempt = 0; attempt < max_attempts && !found_valid_curve; attempt++) {
-            std::vector<Point> current_segment;
-            current_segment.push_back(smoothed_path.back());
-            
-            Point p0 = window[0];
-            Point p3 = window[window.size() - 1];
-            
-            Point p1 = random_control_point(p0, window[1], 0.6, 0.9);  // Closer to p0
-            Point p2 = random_control_point(p3, window[window.size() - 2], 0.6, 0.9);  // Closer to p3
-            
-            Point prev_point = current_segment.back();
-            bool segment_valid = true;
-            
-            for (int j = 1; j <= points_per_segment; j++) {
-                double t = static_cast<double>(j) / points_per_segment;
-                Point bezier_pt = bezier_point(p0, p1, p2, p3, t);
-                
-                // Check if the new point and the path to it are safe
-                bool is_safe = true;
-                
-                // point collision
-                for (const auto& obstacle : obstacles) {
-                    if (obstacle.point_intersect(bezier_pt)) {
-                        is_safe = false;
-                        break;
-                    }
-                }
-                
-                // Check path collision
-                if (is_safe) {
-                    const int subsegments = 10;
-                    for (int k = 1; k <= subsegments; k++) {
-                        double s = static_cast<double>(k) / subsegments;
-                        Point intermediate(
-                            prev_point.x + s * (bezier_pt.x - prev_point.x),
-                            prev_point.y + s * (bezier_pt.y - prev_point.y),
-                            prev_point.z + s * (bezier_pt.z - prev_point.z)
-                        );
-                        
-                        if (!is_clear_path(prev_point, intermediate)) {
-                            is_safe = false;
-                            break;
-                        }
-                    }
-                }
-                
-                if (!is_safe) {
-                    segment_valid = false;
-                    break;
-                }
-                
-                current_segment.push_back(bezier_pt);
-                prev_point = bezier_pt;
-            }
-            
-            if (segment_valid) {
-                found_valid_curve = true;
-                best_segment = current_segment;
-            }
+        size_t points_remaining = rrt_path.size() - i;
+        size_t num_control_points = std::min(points_remaining, size_t(25));  // Max 9 points
+        std::vector<Point> control_points;
+
+        for(size_t j = 0; j < num_control_points; j++) {
+            control_points.push_back(rrt_path[i + j]);
         }
-        
-        if (found_valid_curve) {
-            smoothed_path.insert(smoothed_path.end(), 
-                            best_segment.begin() + 1, 
-                            best_segment.end());
-        } else {
-            throw std::runtime_error("Could not find valid bezier path for window");
+
+        size_t points_to_generate = (num_control_points > 1) ? num_control_points - 1 : 1;
+        double t_step = 1.0 / (points_to_generate);
+
+        for (size_t j = 0; j < points_to_generate; j++) {
+            double t = j * t_step;
+            Point p = evaluate_bezier_de_casteljau(control_points, t);
+            if(is_point_valid(p)) {
+                smoothed_path.push_back(p);
+            } 
         }
+        i += (num_control_points > 1) ? num_control_points - 1 : 1;
     }
     return smoothed_path;
 }
 
 //Find a path from the start to the goal
-std::vector<Point> RRT::find_rrt_path(const Point &goal, int max_it = 10000) {
+std::vector<Point> RRT::find_rrt_path() {
 
-    for (int i = 0; i < max_it; i++){
+    for (int i = 0; i < max_iterations; i++){
         
         // std::cout << "Iteration: " << i << std::endl;
         //Randomly sample a point in the workspace (Vanilla RRT)
@@ -237,9 +254,6 @@ std::vector<Point> RRT::find_rrt_path(const Point &goal, int max_it = 10000) {
 
         //Check if the new node is close to the goal
         if (new_node && new_node->position.distance(goal) < step_size) {
-            if (!is_point_valid(goal)) { 
-                continue;
-            }
             if(is_clear_path(new_node->position, goal)){
                 std::cout << "Goal found!" << std::endl;
                 std::vector<Point> path;
@@ -265,11 +279,12 @@ std::vector<Point> RRT::find_rrt_path(const Point &goal, int max_it = 10000) {
 
                 std::reverse(path.begin(), path.end());
                 path.push_back(goal);
+                //******Smooth path with Bezier curve:******/
+                path = smooth_rrt_path(path);
                 auto path_msg = nav_msgs::msg::Path();
                 path_msg.header.frame_id = "map";
                 path_msg.header.stamp = this->now();
-                path = bezier_path(path);
-
+            
                 for (const auto& point : path) {
                     geometry_msgs::msg::PoseStamped pose;
                     pose.header = path_msg.header;
