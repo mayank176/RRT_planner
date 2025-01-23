@@ -2,35 +2,20 @@
 
 <table>
   <tr>
-    <td width="33%">
-      <iframe 
-        width="100%" 
-        height="315" 
-        src="https://www.youtube.com/embed/m6gwcZdr-7E?autoplay=1&mute=1&playlist=m6gwcZdr-7E&loop=1" 
-        frameborder="0" 
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-        allowfullscreen>
-      </iframe>
+    <td>
+      <a href="https://www.youtube.com/watch?v=m6gwcZdr-7E">
+        <img src="https://img.youtube.com/vi/m6gwcZdr-7E/maxresdefault.jpg" alt="Video 1" width="100%">
+      </a>
     </td>
-    <td width="33%">
-      <iframe 
-        width="100%" 
-        height="315" 
-        src="https://www.youtube.com/embed/vcrzpCwrdjg?autoplay=1&mute=1&playlist=vcrzpCwrdjg&loop=1" 
-        frameborder="0" 
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-        allowfullscreen>
-      </iframe>
+    <td>
+      <a href="https://www.youtube.com/watch?v=vcrzpCwrdjg">
+        <img src="https://img.youtube.com/vi/vcrzpCwrdjg/maxresdefault.jpg" alt="Video 2" width="100%">
+      </a>
     </td>
-    <td width="33%">
-      <iframe 
-        width="100%" 
-        height="315" 
-        src="https://www.youtube.com/embed/0_lWhyyyMDo?autoplay=1&mute=1&playlist=0_lWhyyyMDo&loop=1" 
-        frameborder="0" 
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-        allowfullscreen>
-      </iframe>
+    <td>
+      <a href="https://www.youtube.com/watch?v=0_lWhyyyMDo">
+        <img src="https://img.youtube.com/vi/0_lWhyyyMDo/maxresdefault.jpg" alt="Video 3" width="100%">
+      </a>
     </td>
   </tr>
 </table>
