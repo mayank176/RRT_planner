@@ -2,31 +2,31 @@
 
 <table>
   <tr>
-    <td width="32%">
+    <td width="33%">
       <iframe 
         width="100%" 
         height="315" 
-        src="https://youtu.be/m6gwcZdr-7E" 
+        src="https://www.youtube.com/embed/m6gwcZdr-7E?autoplay=1&mute=1&playlist=m6gwcZdr-7E&loop=1" 
         frameborder="0" 
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
         allowfullscreen>
       </iframe>
     </td>
-    <td width="32%">
+    <td width="33%">
       <iframe 
         width="100%" 
         height="315" 
-        src="https://youtu.be/vcrzpCwrdjg" 
+        src="https://www.youtube.com/embed/vcrzpCwrdjg?autoplay=1&mute=1&playlist=vcrzpCwrdjg&loop=1" 
         frameborder="0" 
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
         allowfullscreen>
       </iframe>
     </td>
-    <td width="32%">
+    <td width="33%">
       <iframe 
         width="100%" 
         height="315" 
-        src="https://youtu.be/0_lWhyyyMDo"
+        src="https://www.youtube.com/embed/0_lWhyyyMDo?autoplay=1&mute=1&playlist=0_lWhyyyMDo&loop=1" 
         frameborder="0" 
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
         allowfullscreen>
