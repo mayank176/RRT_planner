@@ -42,42 +42,34 @@ class Trajectory {
 protected:
     double t;
     double dt;
-    double T;
     std::string name;
-
     static Eigen::Vector3d tj_from_line(const Eigen::Vector3d& start_pos, 
                                       const Eigen::Vector3d& end_pos, 
                                       double time_ttl, 
                                       double t_c);
 public:
-    Trajectory(double dt, double simulation_time) 
-        : t(0), dt(dt), T(simulation_time) {}
+    Trajectory(double dt);
+    virtual ~Trajectory() = default;
     std::string getName() const;
     virtual DesiredState getDesState(double t) = 0;
 };
-
-
 class HoverTrajectory : public Trajectory {
 private:
     double hoverHeight;
     double T;
 public:
-    HoverTrajectory(double dt, double T,  double hover_height = 2.0) 
-        : Trajectory(dt, T), hoverHeight(hover_height) {}
+    HoverTrajectory(double dt, double hoverHeight = 2.0, double T = 5.0);
     DesiredState getDesState(double t) override;
 };
-
 class CustomTrajectory : public Trajectory {
 private:
     double T;
     std::vector<Eigen::Vector3d> traj;
     std::vector<double> tArr;
     size_t waypointIndex;
-
     std::vector<double> divideTimeFromPath(const std::vector<Eigen::Vector3d>& path, double T);
-
 public:
-    CustomTrajectory(double dt, const std::vector<Eigen::Vector3d>& trajectory, double T,
+    CustomTrajectory(double dt, const std::vector<Eigen::Vector3d>& trajectory, double time = 25.0, 
                     const std::string& name = "Custom");
     DesiredState getDesState(double t) override;
 };

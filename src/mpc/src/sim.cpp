@@ -109,8 +109,9 @@ double QuadrotorEnv::calculateDistanceToGoal(const Eigen::Vector3d& goal_pos) { 
 
 
 
-std::string Trajectory::getName() const { return name; }
+Trajectory::Trajectory(double dt) : t(0), dt(dt) {}
 
+std::string Trajectory::getName() const { return name; }
 Eigen::Vector3d Trajectory::tj_from_line(const Eigen::Vector3d& start_pos, 
                                     const Eigen::Vector3d& end_pos, 
                                     double time_ttl, 
@@ -127,13 +128,13 @@ Eigen::Vector3d Trajectory::tj_from_line(const Eigen::Vector3d& start_pos,
     }
     return pos;
 }
-
+HoverTrajectory::HoverTrajectory(double dt, double hoverHeight, double T) 
+    : Trajectory(dt), hoverHeight(hoverHeight), T(T) {}
 
 DesiredState HoverTrajectory::getDesState(double t) {
     this->t = t;
     Eigen::Vector3d start_pos(0, 0, 0);
     Eigen::Vector3d end_pos(0, 0, hoverHeight);
-
     DesiredState state;
     if (t > T) {
         state.position = end_pos;
@@ -143,31 +144,25 @@ DesiredState HoverTrajectory::getDesState(double t) {
         state.yaw_dot = 0;
         return state;
     }
-
     state.position = tj_from_line(start_pos, end_pos, T, t);
     Eigen::Vector3d nextPos = tj_from_line(start_pos, end_pos, T, t + dt);
     Eigen::Vector3d nextNextPos = tj_from_line(start_pos, end_pos, T, t + 2*dt);
-
     state.velocity = (nextPos - state.position) / dt;
     Eigen::Vector3d nextVel = (nextNextPos - nextPos) / dt;
     state.acceleration = (nextVel - state.velocity) / dt;
-
     // Limit max velocity and acceleration
     for (int i = 0; i < 3; i++) {
         state.velocity[i] = std::max(-1.0, std::min(1.0, state.velocity[i]));
         state.acceleration[i] = std::max(-1.0, std::min(1.0, state.acceleration[i]));
     }
-
     state.yaw = 0;
     state.yaw_dot = 0;
     return state;
 }
-
 std::vector<double> CustomTrajectory::divideTimeFromPath(const std::vector<Eigen::Vector3d>& path, double T) {
     size_t totalWaypoints = path.size();
     std::vector<double> distanceList;
     std::vector<double> tArr(totalWaypoints, 0.0);
-
     // Calculate distances between consecutive waypoints
     double totalDistance = 0.0;
     for (size_t i = 0; i < totalWaypoints - 1; i++) {
@@ -175,38 +170,32 @@ std::vector<double> CustomTrajectory::divideTimeFromPath(const std::vector<Eigen
         distanceList.push_back(distance);
         totalDistance += distance;
     }
-
     // Distribute time proportionally to distances
     double sumDist = 0.0;
     for (size_t i = 0; i < totalWaypoints - 1; i++) {
         sumDist += distanceList[i];
         tArr[i + 1] = (sumDist / totalDistance) * T;  // tArr[0] stays 0
     }
-
     for (size_t i = 0; i < tArr.size(); i++) {
         RCLCPP_INFO(rclcpp::get_logger("custom_trajectory"), 
             "Waypoint %zu time: %f, position: (%f, %f, %f)", 
             i, tArr[i], path[i].x(), path[i].y(), path[i].z());
     }
-
         return tArr;
 }
-
-
-CustomTrajectory::CustomTrajectory(double dt, const std::vector<Eigen::Vector3d>& trajectory, double T, 
+CustomTrajectory::CustomTrajectory(double dt, const std::vector<Eigen::Vector3d>& trajectory, double time, 
                 const std::string& name)
-    : Trajectory(dt,T), 
-      traj(trajectory),
-      waypointIndex(0) 
+    : Trajectory(dt)
+    , T(time)
+    , traj(trajectory)
+    , waypointIndex(0) 
 {
     this->name = name;
     tArr = divideTimeFromPath(traj, T);
 }
-
 DesiredState CustomTrajectory::getDesState(double t) {
     this->t = t;
     DesiredState state;
-
     if (t == 0.0) {  //start position
         state.position = traj[0];
         state.velocity = Eigen::Vector3d::Zero();
@@ -215,12 +204,10 @@ DesiredState CustomTrajectory::getDesState(double t) {
         state.yaw_dot = 0;
         return state;
     }
-
     if (t < T) {
         if (t > tArr[waypointIndex]) {
             waypointIndex++;
         }
-
         if (waypointIndex >= traj.size() - 1) {
             state.velocity = Eigen::Vector3d::Zero();
             state.acceleration = Eigen::Vector3d::Zero();
@@ -229,30 +216,24 @@ DesiredState CustomTrajectory::getDesState(double t) {
             state.yaw_dot = 0;
             return state;
         }
-
         Eigen::Vector3d start_pos = traj[waypointIndex];
         Eigen::Vector3d end_pos = traj[waypointIndex + 1];
         double t_c = t - (tArr[waypointIndex + 1] - tArr[waypointIndex]);
-
         state.position = tj_from_line(start_pos, end_pos, T, t_c);
         Eigen::Vector3d nextPos = tj_from_line(start_pos, end_pos, T, t_c + dt);
         Eigen::Vector3d nextNextPos = tj_from_line(start_pos, end_pos, T, t_c + 2*dt);
-
         state.velocity = (nextPos - state.position) / dt;
         Eigen::Vector3d nextVel = (nextNextPos - nextPos) / dt;
         state.acceleration = (nextVel - state.velocity) / dt;
-
         for (int i = 0; i < 3; i++) {
             state.velocity[i] = std::max(-1.0, std::min(1.0, state.velocity[i]));
             state.acceleration[i] = std::max(-1.0, std::min(1.0, state.acceleration[i]));
         }
-
     } else {  // t >= T
         state.position = traj.back();
         state.velocity = Eigen::Vector3d::Zero();
         state.acceleration = Eigen::Vector3d::Zero();
     }
-
     state.yaw = 0;
     state.yaw_dot = 0;
     return state;
@@ -319,26 +300,28 @@ visualization_msgs::msg::Marker QuadrotorController::create_quadrotor_marker(con
     marker.header.stamp = this->now();
     marker.ns = "quadrotor";
     marker.id = 1;
-    marker.type = visualization_msgs::msg::Marker::CUBE;
+    marker.type = visualization_msgs::msg::Marker::MESH_RESOURCE;  // Use mesh for detailed model
     marker.action = visualization_msgs::msg::Marker::ADD;
     
+    // Use a detailed quadrotor mesh (you'll need to provide the mesh file path)
+    marker.mesh_resource = "file:///home/mayank/Documents/RRT_planner/src/mpc/meshes/quadrotor.dae";
+    marker.mesh_use_embedded_materials = true;
+
+    // Position
     marker.pose.position.x = state.position.x();
     marker.pose.position.y = state.position.y();
     marker.pose.position.z = state.position.z();
     
+    // Orientation
     marker.pose.orientation.x = state.quaternion[0];
     marker.pose.orientation.y = state.quaternion[1];
     marker.pose.orientation.z = state.quaternion[2];
     marker.pose.orientation.w = state.quaternion[3];
     
-    marker.scale.x = 0.4;
-    marker.scale.y = 0.4;
-    marker.scale.z = 0.1;
-    
-    marker.color.r = 0.0;
-    marker.color.g = 0.0;
-    marker.color.b = 1.0;
-    marker.color.a = 1.0;
+    // Scale the mesh (adjust as needed)
+    marker.scale.x = 1.5;
+    marker.scale.y = 1.5;
+    marker.scale.z = 1.5;
     
     return marker;
 }
