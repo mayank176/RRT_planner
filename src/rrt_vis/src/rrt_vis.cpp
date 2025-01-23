@@ -164,37 +164,41 @@ void path_visualizer::visualize_and_plan() {
 
 path_visualizer::path_visualizer() : Node("path_visualizer") {
 
-    marker_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 10);
-
-    this->declare_parameter("min_bound_x", -10.0);
-    this->declare_parameter("min_bound_y", -10.0);
-    this->declare_parameter("min_bound_z", -10.0);
-    this->declare_parameter("max_bound_x", 11.0);
-    this->declare_parameter("max_bound_y", 11.0);
-    this->declare_parameter("max_bound_z", 11.0);
-    this->declare_parameter("step_size", 0.75);
-    this->declare_parameter("safety_margin", 0.7);
-    this->declare_parameter("max_iterations", 10000);
+    declare_parameter("min_bound_x", -10.0);
+    declare_parameter("min_bound_y", -10.0);
+    declare_parameter("min_bound_z", -10.0);
+    declare_parameter("max_bound_x", 11.0);
+    declare_parameter("max_bound_y", 11.0);
+    declare_parameter("max_bound_z", 11.0);
+    declare_parameter("step_size", 0.75);
+    declare_parameter("safety_margin", 0.7);
+    declare_parameter("max_iterations", 10000);
     
-    this->declare_parameter("start_x", -9.0);
-    this->declare_parameter("start_y", -9.0);
-    this->declare_parameter("start_z", -9.0);
-    this->declare_parameter("goal_x", 10.0);
-    this->declare_parameter("goal_y", 10.0);
-    this->declare_parameter("goal_z", 10.0);
-    this->declare_parameter("environment_num", 1);
-
+    declare_parameter("start_x", -9.0);
+    declare_parameter("start_y", -9.0);
+    declare_parameter("start_z", -9.0);
+    declare_parameter("goal_x", 10.0);
+    declare_parameter("goal_y", 10.0);
+    declare_parameter("goal_z", 10.0);
+    
+    declare_parameter("environment_num", 2);
+    
+    int environment_num = this ->get_parameter("environment_num").as_int();
+    
+    marker_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 10);
+    
     rrt_ = std::make_unique<RRT>(this);
 
     Cuboid obstacle1(Point(-10.0, -10.0, -10.0), Point(11.0, 11.0, -9.75));
     rrt_->add_obstacle(obstacle1);
-    if (rrt_->env_num == 1){
+
+    if (environment_num == 1){
         Cuboid obstacle2(Point(-4.0, -10.0, -10.0), Point(-4.5, 4.0, 11.0));
         rrt_->add_obstacle(obstacle2);
         Cuboid obstacle3(Point(4.0, -4.0, -10.0), Point(4.5, 11.0, 11.0));
         rrt_->add_obstacle(obstacle3);
     }
-    if (rrt_->env_num == 2){
+    if (environment_num == 2){
         Cuboid obstacle2(Point(-4.0, -10.0, -10.0), Point(-4.5, 11.0, 4.0));
         rrt_->add_obstacle(obstacle2);
         Cuboid obstacle3(Point(-4.0, -10.0, 8.0 ), Point(-4.5, 11.0, 11.0));
@@ -204,7 +208,7 @@ path_visualizer::path_visualizer() : Node("path_visualizer") {
         Cuboid obstacle5(Point(4.0, -10.0, -10.0 ), Point(4.5, 11.0, -7.0));
         rrt_->add_obstacle(obstacle5);
     }
-    if (rrt_->env_num == 3){
+    if (environment_num == 3){
         Cuboid obstacle2(Point(-8.0, -8.0, -10.0), Point(-6.0, -6.0, 11.0));
         rrt_->add_obstacle(obstacle2);
         Cuboid obstacle3(Point(0.0, 0.0, -10.0), Point(-3.0, -3.0, 11.0));
@@ -229,7 +233,7 @@ path_visualizer::path_visualizer() : Node("path_visualizer") {
     
     using namespace std::chrono_literals;
     timer_ = this->create_wall_timer(
-        100ms, 
+        10ms, 
         std::bind(&path_visualizer::visualize_and_plan, this));
 
     RCLCPP_INFO(this->get_logger(), "Path visualizer node has been started.");
