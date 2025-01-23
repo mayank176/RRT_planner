@@ -1,14 +1,39 @@
 # Sampling-Based Motion Planning for Quadrotors in Cluttered Environments 
 
-<p align="center">
-  <img src="docs/media/simenv1.gif" width="32%" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/media/simenv2.gif" width="32%" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/media/simenv3.gif" width="32%" />
-</p>
-<p align="center">
-</p>
+<table>
+  <tr>
+    <td width="32%">
+      <iframe 
+        width="100%" 
+        height="315" 
+        src="https://youtu.be/m6gwcZdr-7E" 
+        frameborder="0" 
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+        allowfullscreen>
+      </iframe>
+    </td>
+    <td width="32%">
+      <iframe 
+        width="100%" 
+        height="315" 
+        src="https://youtu.be/vcrzpCwrdjg" 
+        frameborder="0" 
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+        allowfullscreen>
+      </iframe>
+    </td>
+    <td width="32%">
+      <iframe 
+        width="100%" 
+        height="315" 
+        src="https://youtu.be/0_lWhyyyMDo"
+        frameborder="0" 
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+        allowfullscreen>
+      </iframe>
+    </td>
+  </tr>
+</table>
 
 This repository provides a comprehensive motion planning and control framework in C++ designed for quadrotor navigation in complex environments with obstacles. The system integrates three key components:
 
