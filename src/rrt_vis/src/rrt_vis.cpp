@@ -1,6 +1,4 @@
 #include "rrt_vis.h"
-#include <memory>
-#include <vector>
 
 visualization_msgs::msg::Marker path_visualizer::create_tree_marker() {
 
@@ -19,7 +17,7 @@ visualization_msgs::msg::Marker path_visualizer::create_tree_marker() {
     marker.color.r = 0.0;
     marker.color.g = 1.0;
     marker.color.b = 0.0;
-    marker.color.a = 0.0;
+    marker.color.a = 0.05;
 
     for (const auto &node : rrt_->nodes) {
         if (node->parent) {
