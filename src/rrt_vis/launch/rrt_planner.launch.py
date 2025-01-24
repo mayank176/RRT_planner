@@ -9,7 +9,7 @@ import os
 def generate_launch_description():
 
     pkg_dir = get_package_share_directory('rrt_vis')
-    config_file = os.path.join(pkg_dir, 'config', 'rrt_params.yaml')
+    config_file = os.path.join(pkg_dir, 'config', 'rrt_params.yaml') #Change for env4 to: 'rrt_params_env4.yaml' 
     
     print(f"Loading config from: {config_file}")
     with open(config_file, 'r') as f:

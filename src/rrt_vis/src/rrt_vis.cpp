@@ -1,4 +1,6 @@
 #include "rrt_vis.h"
+#include <memory>
+#include <vector>
 
 visualization_msgs::msg::Marker path_visualizer::create_tree_marker() {
 
@@ -17,7 +19,7 @@ visualization_msgs::msg::Marker path_visualizer::create_tree_marker() {
     marker.color.r = 0.0;
     marker.color.g = 1.0;
     marker.color.b = 0.0;
-    marker.color.a = 0.1;
+    marker.color.a = 0.0;
 
     for (const auto &node : rrt_->nodes) {
         if (node->parent) {
@@ -144,7 +146,7 @@ void path_visualizer::visualize_and_plan() {
             marker_publisher_->publish(update_markers);
             
             // Add small delay to make visualization visible
-            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            // std::this_thread::sleep_for(std::chrono::milliseconds(10));
         };
 
         path_ = rrt_->find_rrt_path();
@@ -164,42 +166,50 @@ void path_visualizer::visualize_and_plan() {
 
 path_visualizer::path_visualizer() : Node("path_visualizer") {
 
-    declare_parameter("min_bound_x", -10.0);
-    declare_parameter("min_bound_y", -10.0);
-    declare_parameter("min_bound_z", -10.0);
-    declare_parameter("max_bound_x", 11.0);
-    declare_parameter("max_bound_y", 11.0);
-    declare_parameter("max_bound_z", 11.0);
-    declare_parameter("step_size", 0.75);
-    declare_parameter("safety_margin", 0.7);
-    declare_parameter("max_iterations", 10000);
-    
-    declare_parameter("start_x", -9.0);
-    declare_parameter("start_y", -9.0);
-    declare_parameter("start_z", -9.0);
-    declare_parameter("goal_x", 10.0);
-    declare_parameter("goal_y", 10.0);
-    declare_parameter("goal_z", 10.0);
-    
-    declare_parameter("environment_num", 2);
-    
+    rcl_interfaces::msg::ParameterDescriptor descriptor;
+    descriptor.dynamic_typing = true;
+
+    this->declare_parameter("min_bound_x", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("min_bound_y", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("min_bound_z", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("max_bound_x", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("max_bound_y", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("max_bound_z", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("step_size", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("safety_margin", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("max_iterations", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("start_x", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("start_y", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("start_z", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("goal_x", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("goal_y", rclcpp::ParameterValue{}, descriptor);
+    this->declare_parameter("goal_z", rclcpp::ParameterValue{}, descriptor);    
+    this->declare_parameter("environment_num", rclcpp::ParameterValue{}, descriptor);
+
     int environment_num = this ->get_parameter("environment_num").as_int();
     
     marker_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 10);
     
     rrt_ = std::make_unique<RRT>(this);
-
-    Cuboid obstacle1(Point(-10.0, -10.0, -10.0), Point(11.0, 11.0, -9.75));
-    rrt_->add_obstacle(obstacle1);
-
+    
     if (environment_num == 1){
+        Cuboid obstacle1(Point(-10.0, -10.0, -10.0), Point(11.0, 11.0, -9.75));
+        rrt_->add_obstacle(obstacle1);
         Cuboid obstacle2(Point(-4.0, -10.0, -10.0), Point(-4.5, 4.0, 11.0));
         rrt_->add_obstacle(obstacle2);
-        Cuboid obstacle3(Point(4.0, -4.0, -10.0), Point(4.5, 11.0, 11.0));
+        Cuboid obstacle3(Point(4.0, -10.0, -10.0), Point(4.5, 4.0, 11.0));
         rrt_->add_obstacle(obstacle3);
+        Cuboid obstacle6(Point(0.0, -6.0, -10.0), Point(0.5, 11.0, 11.0));
+        rrt_->add_obstacle(obstacle6);
+        Cuboid obstacle5(Point(-4.0, 4.0, -10.0), Point(0.0, 3.5, 0.0));
+        rrt_->add_obstacle(obstacle5);
+        Cuboid obstacle7(Point(4.0, 4.0, 0.0), Point(0.0, 3.5, 11.0));
+        rrt_->add_obstacle(obstacle7);
     }
     if (environment_num == 2){
-        Cuboid obstacle2(Point(-4.0, -10.0, -10.0), Point(-4.5, 11.0, 4.0));
+        Cuboid obstacle1(Point(-10.0, -10.0, -10.0), Point(11.0, 11.0, -9.75));
+        rrt_->add_obstacle(obstacle1);
+        Cuboid obstacle2(Point(-4.0, -10.0, -10.0), Point(-4.5, 11.0, 5.0));
         rrt_->add_obstacle(obstacle2);
         Cuboid obstacle3(Point(-4.0, -10.0, 8.0 ), Point(-4.5, 11.0, 11.0));
         rrt_->add_obstacle(obstacle3);
@@ -207,30 +217,96 @@ path_visualizer::path_visualizer() : Node("path_visualizer") {
         rrt_->add_obstacle(obstacle4);
         Cuboid obstacle5(Point(4.0, -10.0, -10.0 ), Point(4.5, 11.0, -7.0));
         rrt_->add_obstacle(obstacle5);
-    }
-    if (environment_num == 3){
-        Cuboid obstacle2(Point(-8.0, -8.0, -10.0), Point(-6.0, -6.0, 11.0));
-        rrt_->add_obstacle(obstacle2);
-        Cuboid obstacle3(Point(0.0, 0.0, -10.0), Point(-3.0, -3.0, 11.0));
-        rrt_->add_obstacle(obstacle3);
-        Cuboid obstacle4(Point(2.0, 0.0, -10.0), Point(4.0, 2.0, 11.0));//8
-        rrt_->add_obstacle(obstacle4);
-        Cuboid obstacle5(Point(5.0, 5.0, -10.0), Point(8.0, 8.0, 11.0));//8
-        rrt_->add_obstacle(obstacle5);
-        Cuboid obstacle6(Point(-9.0, 1.0, -10.0), Point(-6.0, -3.0, 11.0));
+        Cuboid obstacle6(Point(-4.0, -10.0, 5.0 ), Point(-4.5, 0.0, 8.0));
         rrt_->add_obstacle(obstacle6);
-        Cuboid obstacle7(Point(9.0, -1.0, -10.0), Point(6.0, 3.0, 11.0));//8
+        Cuboid obstacle7(Point(4.0, 0.0, -7.0), Point(4.5, 11.0, -4.0));
         rrt_->add_obstacle(obstacle7);
-        Cuboid obstacle8(Point(-1.0, -9.0, -10.0), Point(3.0, -6.0, 11.0));//8
+        Cuboid obstacle8(Point(-4.0, 4.0, 5.0 ), Point(-4.5, 11.0, 8.0));
         rrt_->add_obstacle(obstacle8);
-        Cuboid obstacle9(Point(8.0, -9.0, -10.0), Point(6.0, -6.0, 11.0));//8
+        Cuboid obstacle9(Point(4.0, -4.0, -7.0), Point(4.5, -10.0, -4.0));
         rrt_->add_obstacle(obstacle9);
-        Cuboid obstacle10(Point(-8.0, 9.0, -10.0), Point(-6.0, 6.0,11.0));//8
+    } 
+    if (environment_num == 3) {
+        Cuboid obstacle1(Point(-10.0, -10.0, -10.0), Point(11.0, 11.0, -9.75));
+        rrt_->add_obstacle(obstacle1);
+        Cuboid wall_left_top(Point(-5.0, -6.0, -10.0), Point(-5.5, 11.0, 11.0));
+        rrt_->add_obstacle(wall_left_top);
+        Cuboid wall_right_bottom(Point(1.0, -10.0, -10.0), Point(0.5, 7.0, 11.0));
+        rrt_->add_obstacle(wall_right_bottom);
+        Cuboid constriction1(Point(-5.5, -5.0, -10.0), Point(-3.0, -3.0, 11.0));
+        rrt_->add_obstacle(constriction1);
+        Cuboid constriction2(Point(-2.0, 2.0, -10.0), Point(0.5, 4.0, 11.0));
+        rrt_->add_obstacle(constriction2);
+        Cuboid constriction3(Point(-5.5, 7.0, -10.0), Point(-3.0, 9.0, 11.0));
+        rrt_->add_obstacle(constriction3);
+        Cuboid obstacle4(Point(7.0, -5.0, -10.0), Point(7.5, 11.0, 11.0));
+        rrt_->add_obstacle(obstacle4);
+        Cuboid constriction4(Point(7.0, 0.0, -10.0), Point(4.5, 2.0, 11.0));
+        rrt_->add_obstacle(constriction4);
+        Cuboid constriction5(Point(1.0, 5.0, -10.0), Point(3.5, 7.0, 11.0));
+        rrt_->add_obstacle(constriction5);
+    }  
+    if (environment_num == 4) {
+        Cuboid obstacle0(Point(-20.0, -20.0, -10.0), Point(21.0, 21.0, -9.75));
+        rrt_->add_obstacle(obstacle0);
+        Cuboid obstacle1(Point(-16.0, -16.0, -10.0), Point(-13.0, -13.0, 11.0));
+        rrt_->add_obstacle(obstacle1);
+        Cuboid obstacle2(Point(-8.0, -14.0, -10.0), Point(-5.0, -11.0, 11.0));
+        rrt_->add_obstacle(obstacle2);
+        Cuboid obstacle3(Point(-12.0, -6.0, -10.0), Point(-9.0, -3.0, 11.0));
+        rrt_->add_obstacle(obstacle3);
+        Cuboid obstacle4(Point(-16.0, 2.0, -10.0), Point(-13.0, 5.0, 11.0));
+        rrt_->add_obstacle(obstacle4);
+        Cuboid obstacle5(Point(-10.0, 8.0, -10.0), Point(-7.0, 11.0, 11.0));
+        rrt_->add_obstacle(obstacle5);
+        Cuboid obstacle6(Point(-14.0, 16.0, -10.0), Point(-11.0, 19.0, 11.0));
+        rrt_->add_obstacle(obstacle6);
+        Cuboid obstacle7(Point(-4.0, -18.0, -10.0), Point(-1.0, -15.0, 11.0));
+        rrt_->add_obstacle(obstacle7);
+        Cuboid obstacle8(Point(-2.0, -10.0, -10.0), Point(1.0, -7.0, 11.0));
+        rrt_->add_obstacle(obstacle8);
+        Cuboid obstacle9(Point(-6.0, -2.0, -10.0), Point(-3.0, 1.0, 11.0));
+        rrt_->add_obstacle(obstacle9);
+        Cuboid obstacle10(Point(-4.0, 6.0, -10.0), Point(-1.0, 9.0, 11.0));
         rrt_->add_obstacle(obstacle10);
-        Cuboid obstacle11(Point(-1.0, 7.0, -10.0), Point(1.0, 5.0, 11.0));
+        Cuboid obstacle11(Point(-8.0, 14.0, -10.0), Point(-5.0, 17.0, 11.0));
         rrt_->add_obstacle(obstacle11);
+        Cuboid obstacle12(Point(-2.0, 18.0, -10.0), Point(1.0, 20.0, 11.0));
+        rrt_->add_obstacle(obstacle12);
+        Cuboid obstacle13(Point(4.0, -16.0, -10.0), Point(7.0, -13.0, 11.0));
+        rrt_->add_obstacle(obstacle13);
+        Cuboid obstacle14(Point(8.0, -12.0, -10.0), Point(11.0, -9.0, 11.0));
+        rrt_->add_obstacle(obstacle14);
+        Cuboid obstacle15(Point(2.0, -4.0, -10.0), Point(5.0, -1.0, 11.0));
+        rrt_->add_obstacle(obstacle15);
+        Cuboid obstacle16(Point(6.0, 4.0, -10.0), Point(9.0, 7.0, 11.0));
+        rrt_->add_obstacle(obstacle16);
+        Cuboid obstacle17(Point(-1.5, -1.5, -10.0), Point(1.5, 1.5, 11.0));
+        rrt_->add_obstacle(obstacle17);
+        Cuboid obstacle18(Point(8.0, 18.0, -10.0), Point(11.0, 20.0, 11.0));
+        rrt_->add_obstacle(obstacle18);
+        Cuboid obstacle19(Point(14.0, -18.0, -10.0), Point(17.0, -15.0, 11.0));
+        rrt_->add_obstacle(obstacle19);
+        Cuboid obstacle20(Point(16.0, -10.0, -10.0), Point(19.0, -7.0, 11.0));
+        rrt_->add_obstacle(obstacle20);
+        Cuboid obstacle21(Point(12.0, -2.0, -10.0), Point(15.0, 1.0, 11.0));
+        rrt_->add_obstacle(obstacle21);
+        Cuboid obstacle22(Point(16.0, 6.0, -10.0), Point(19.0, 9.0, 11.0));
+        rrt_->add_obstacle(obstacle22);
+        Cuboid obstacle23(Point(12.0, 14.0, -10.0), Point(15.0, 17.0, 11.0));
+        rrt_->add_obstacle(obstacle23);
+        Cuboid obstacle25(Point(-18.0, -4.0, -10.0), Point(-15.0, -1.0, 11.0));
+        rrt_->add_obstacle(obstacle25);
+        Cuboid obstacle26(Point(-12.0, 4.0, -10.0), Point(-9.0, 7.0, 11.0));
+        rrt_->add_obstacle(obstacle26);
+        Cuboid obstacle27(Point(-6.0, 12.0, -10.0), Point(-3.0, 15.0, 11.0));
+        rrt_->add_obstacle(obstacle27);
+        Cuboid obstacle28(Point(2.0, 8.0, -10.0), Point(5.0, 11.0, 11.0));
+        rrt_->add_obstacle(obstacle28);
+        Cuboid obstacle29(Point(10.0, 2.0, -10.0), Point(13.0, 5.0, 11.0));
+        rrt_->add_obstacle(obstacle29);
     }
-    
+
     using namespace std::chrono_literals;
     timer_ = this->create_wall_timer(
         10ms, 

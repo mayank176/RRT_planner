@@ -1,0 +1,35 @@
+/path_visualizer:
+  ros__parameters:
+    min_bound_x: -20.0 # Environment bounds
+    min_bound_y: -20.0
+    min_bound_z: -10.0
+    max_bound_x: 21.0
+    max_bound_y: 21.0
+    max_bound_z: 11.0
+    environment_num: 4
+    start_x: -19.0 # Starting position
+    start_y: -19.0 
+    start_z: -9.0
+    goal_x: 20.0
+    goal_y: 20.0 
+    goal_z: 10.0
+    step_size: 0.75 # RRT parameters
+    safety_margin: 0.7
+    max_iterations: 10000 
+
+/quadrotor_controller:
+  ros__parameters:
+    simulation_time: 25.0    
+    #NLPD Gains
+    kp_x: 8.0
+    kp_y: 8.0
+    kp_z: 12.0
+    kd_x: 5.5
+    kd_y: 5.5
+    kd_z: 8.0
+    kr_x: 100.0
+    kr_y: 100.0
+    kr_z: 10.0
+    kw_x: 20.0
+    kw_y: 20.0
+    kw_z: 10.0
