@@ -211,7 +211,7 @@ std::vector<Point> RRT::smooth_rrt_path(const std::vector<Point>& rrt_path) {
     while(i < rrt_path.size() - 1) {  
         
         size_t points_remaining = rrt_path.size() - i;
-        size_t num_control_points = std::min(points_remaining, size_t(25));  // Max 9 points
+        size_t num_control_points = std::min(points_remaining, size_t(50));  
         std::vector<Point> control_points;
 
         for(size_t j = 0; j < num_control_points; j++) {
