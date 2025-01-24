@@ -1,24 +1,8 @@
 # Sampling-Based Motion Planning for Quadrotors in Cluttered Environments 
 
-<table>
-  <tr>
-    <td>
-      <a href="https://www.youtube.com/watch?v=m6gwcZdr-7E">
-        <img src="https://img.youtube.com/vi/m6gwcZdr-7E/maxresdefault.jpg" alt="Video 1" width="100%">
-      </a>
-    </td>
-    <td>
-      <a href="https://www.youtube.com/watch?v=vcrzpCwrdjg">
-        <img src="https://img.youtube.com/vi/vcrzpCwrdjg/maxresdefault.jpg" alt="Video 2" width="100%">
-      </a>
-    </td>
-    <td>
-      <a href="https://www.youtube.com/watch?v=0_lWhyyyMDo">
-        <img src="https://img.youtube.com/vi/0_lWhyyyMDo/maxresdefault.jpg" alt="Video 3" width="100%">
-      </a>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/media/RRT_planner_demo.gif" />
+</p>
 
 This repository provides a comprehensive motion planning and control framework in C++ designed for quadrotor navigation in complex environments with obstacles. The system integrates three key components:
 
@@ -122,23 +106,29 @@ source ~/RRT_planner/install/setup.bash
 
 # Configuration Options
 
-Access to all environment, RRT, and controller parameters can be configured in `RRT_planner/src/rrt_vis/config/rrt_params.yaml` 
+Access to all environment, RRT, and controller parameters listed below can be configured in `RRT_planner/src/rrt_vis/config/rrt_params.yaml` 
 
 <p align="center">
-  <img src="docs/media/env1.gif" width="30%" />
+  <img src="docs/media/env1.gif" width="23%" />
   &nbsp;&nbsp;&nbsp;
-  <img src="docs/media/env2.gif" width="30%" />
+  <img src="docs/media/env2.gif" width="23%" />
   &nbsp;&nbsp;&nbsp;
-  <img src="docs/media/env3.gif" width="30%" />
+  <img src="docs/media/env3.gif" width="23%" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/media/env4.gif" width="23%" />
 </p>
 <p align="center">
-  <em>Env 1</em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <em>Env 2</em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <em>Env 1</em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <em>Env 2</em>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
   <em>Env 3</em>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <em>Env 4</em>
 </p>
 
 1. Environment Parameters:
-   - `int environment_num`: Choose from 3 defined environments shown above to perform simulation (default: 1)
+   - `int environment_num`: Choose from 4 defined environments shown above to perform simulation (default: 3). 
+
+   Note: change .yaml file to `rrt_params_env4.yaml` in `rrt_vis/launch/rrt_planner.launch.py` to load Env4 parameters.
    - `double min_bound_x, min_bound_y, min_bound_z`: If making a custom enviroment, choose minimum bounds of enviroment,  (default: -10.0,-10.0,-10.0 [m])
    - `double max_bound_x, max_bound_y, max_bound_z`: If making a custom enviroment, choose maximum bounds of enviroment (default: 11.0, 11.0, 11.0 [m])
 
@@ -155,7 +145,7 @@ Access to all environment, RRT, and controller parameters can be configured in `
    - `double Kp, Kd, Kr, Kw` : PD gains for lateral and altitude control
    - `int N`: Prediction horizon for MPC (default: 20 [steps])
 
-Note: To create a custom environment, change/add obstacles in `RRT_planner/src/rrt_vis/src/rrt_vis.cpp`
+Note: To create a custom environment you can modify obstacles in `RRT_planner/src/rrt_vis/src/rrt_vis.cpp`
 
 
 # Usage
@@ -165,6 +155,21 @@ After configuring, simply run the following launch file to start the RRT planner
 ```C++
 ros2 launch rrt_vis rrt_planner.launch.py
 ```
+### Visualizing Bezier Smoothing of RRT Path with De Casteljau's algorithm
+
+<p align="center">
+  <img src="docs/media/env3_no_smoothing.png" width="45%" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/media/env3_smoothing.png" width="45%" />
+</p>
+
+<p align="center">
+  <img src="docs/media/env4_no_smoothing.png" width="45%" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/media/env4_smoothing.png" width="45%" />
+</p>
+
+
 
 # Workspace Structure
 ```
