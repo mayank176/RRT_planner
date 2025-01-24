@@ -23,8 +23,8 @@ This repository provides a comprehensive motion planning and control framework i
 
 Before beginning the installation, please ensure you have the following:
    - Ubuntu 22.04 or later
-   - ROS 2 Humble (installation instructions: [ROS 2 Documentation](https://docs.ros.org/en/humble/Installation.html))
-   - Git
+   - Git: `sudo apt-get install git`
+   - ROS 2 Humble (installation instructions: [ROS 2 Documentation](https://docs.ros.org/en/humble/Installation.html)) (required only for standard installation)
 
 ## Docker Installation (recommended)
 
@@ -171,41 +171,68 @@ ros2 launch rrt_vis rrt_planner.launch.py
 
 
 
-# Workspace Structure
+# Workspace Structure and Node Communication
+
+The RRT planner system consists of three main ROS2 packages that work together to plan and visualize paths for a quadrotor. We explain this below:
+
+### Path Visualization (`rrt_vis`)
+The `/path_visualizer` node, implemented in `rrt_vis/src/rrt_vis.cpp`, manages the visualization of paths and environments. It publishes to two topics:
+- `/rrt_path`: Contains the computed RRT (Rapidly-exploring Random Tree) path data
+- `/visualization_marker_array`: Carries visualization markers that represent the environment, RRT path, and the exploration tree
+
+### Quadrotor Control (`mpc`)
+The `/quadrotor_controller` node, found in `mpc/src/sim.cpp`, handles the quadrotor's movement. It:
+1. Subscribes to the `/rrt_path` topic to receive planned paths
+2. Processes this data using the selected controller
+3. Computes the quadrotor's trajectory based on its dynamics
+
+### Visualization
+The `rviz2` node brings everything together visually by subscribing to:
+- `/visualization_marker_array`: Shows the environment, paths, and tree structure
+- `/quadrotor_visualization`: Displays the quadrotor's movement
+
+## System Architecture
+The following rqt graph illustrates how these components communicate:
+
+<p align="center">
+  <img src="docs/media/rqt.png" />
+</p>
+
+## Package Structure
 ```
 RRT_planner/
 ├── src/
-    ├── rrt/
+    ├── rrt/                          # Core RRT Implementation
     │   ├── include/
     |   |   └── rrt.h
     │   ├── src/
-    |   |   └── main.cpp
+    |   |   └── main.cpp    
     │   ├── CMakeLists.txt
     │   └── package.xml
     │
-    ├── rrt_vis/
+    ├── rrt_vis/                      # Visualization Package
     │   ├── include/
     |   |   └── rrt_vis.h
     │   ├── src/
-    |   |   ├── rrt_vis.cpp
+    |   |   ├── rrt_vis.cpp           # Visualize and Run RRT Implementation
     |   |   └── main.cpp
     │   ├── config/           
-    │   │   └── rrt_params.yaml #Change RRT, controller and simulation parameters here
+    │   │   └── rrt_params.yaml       # Configuration for RRT, Controller and Simulation
     │   ├── launch/
-    │   │   └── rrt_planner.launch.py
+    │   │   └── rrt_planner.launch.py # Launch File for Complete Project
     │   ├── CMakeLists.txt
     │   └── package.xml
     │
-    └── mpc/
+    └── mpc/                          # Control and Simulation Package
         ├── include/
         |   ├── controls.h
         |   ├── quadrotor.h
         |   ├── sim.h
         |   └── utils.h
         ├── src/
-        |   ├── controls.cpp
-        |   ├── quadrotor.cpp
-        |   ├── sim.cpp
+        |   ├── controls.cpp          # Controller Implementations
+        |   ├── quadrotor.cpp         # Quadrotor Dynamics
+        |   ├── sim.cpp               # Simulation Environment
         |   └── main.cpp
         ├── CMakeLists.txt
         └── package.xml
