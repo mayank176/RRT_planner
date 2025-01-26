@@ -123,6 +123,51 @@ rrtNode* RRT::nearest_node(const Point &point) {
     return nearest;
 }
 
+//RRT*
+rrtNode* RRT::extend_rewire_tree(rrtNode* parent, const Point &sampled_point) {
+    
+    //Extend Tree like in vanilla RRT:
+    rrtNode* new_node = extend_tree(parent, sampled_point);
+
+    if (new_node == nullptr){
+        return nullptr;
+    } else {
+        double n = nodes.size();
+        double r = 9.0 * std::pow((std::log(n) / n), 0.25);
+
+        std::vector<rrtNode*> nearby_nodes;
+        for (rrtNode* node: nodes){
+            if (node->position.distance(new_node->position) < r){
+                nearby_nodes.push_back(node);
+            }
+        }
+
+        //Finda a better parent for new_node
+        rrtNode* best_parent = nullptr;
+        double min_cost = parent->position.distance(start) + new_node->position.distance(parent->position);
+
+        //Find a better parent (or will return current parent):
+        for (rrtNode* potential_parent: nearby_nodes){
+            double cost = potential_parent->position.distance(start) + potential_parent->position.distance(new_node->position);
+            if (cost < min_cost){
+                best_parent = potential_parent;
+                min_cost = cost;
+            }
+        }
+        
+        // Check if we can rewire THROUGH new_node.
+        for (rrtNode* node: nearby_nodes){
+            double current_cost = node->position.distance(start);
+            double potential_cost = new_node->position.distance(start) + node->position.distance(new_node->position);
+
+            if (potential_cost < current_cost){
+                node->parent = new_node;
+            }
+        }
+        return new_node;
+    }
+}
+
 //Check if path is collision free
 bool RRT::is_clear_path(const Point &start, const Point &end){
 
@@ -246,7 +291,8 @@ std::vector<Point> RRT::find_rrt_path() {
         rrtNode* nearest = nearest_node(random);
 
         //Extend the tree towards the random point
-        rrtNode* new_node = extend_tree(nearest, random);
+        rrtNode* new_node = extend_tree(nearest, random); //Vanilla RRT
+        // rrtNode* new_node = extend_rewire_tree(nearest, random); //RRT*
 
         if (i % 50 == 0 && visualization_callback) {  // Adjust frequency as needed
             visualization_callback(nodes);

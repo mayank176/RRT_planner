@@ -60,6 +60,7 @@ public:
     bool is_clear_path(const Point &start, const Point &end);
     bool is_point_valid(const Point &point);
     rrtNode* extend_tree(rrtNode* nearest, const Point &to);
+    rrtNode* extend_rewire_tree(rrtNode* parent, const Point &sampled_point);
     std::function<void(const std::vector<rrtNode*>&)> visualization_callback;
     std::vector<Point> find_rrt_path();
     Point evaluate_bezier_de_casteljau(const std::vector<Point>& control_points, double t);
