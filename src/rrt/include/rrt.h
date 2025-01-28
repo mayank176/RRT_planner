@@ -7,6 +7,7 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
+#include <Eigen/Dense>
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -17,6 +18,21 @@ struct Point {
     Point(double x, double y, double z);
     double distance(const Point &other) const {
         return std::sqrt((x - other.x) * (x - other.x) + (y - other.y) * (y - other.y) + (z - other.z) * (z - other.z));
+    }
+    Point operator-(const Point& other) const {
+        return Point(x - other.x, y - other.y, z - other.z);
+    }
+
+    Point operator*(double scalar) const {
+        return Point(x * scalar, y * scalar, z * scalar);
+    }
+
+    Point operator+(const Point& other) const {
+        return Point(x + other.x, y + other.y, z + other.z);
+    }
+
+    Point operator/(double scalar) const {
+        return Point(x / scalar, y / scalar, z / scalar);
     }
 };
 
@@ -53,6 +69,12 @@ public:
     std::uniform_real_distribution<double> dist_y {};
     std::uniform_real_distribution<double> dist_z {};
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
+
+    double best_solution_cost = std::numeric_limits<double>::infinity();
+    rrtNode* best_solution_node = nullptr;
+    Point random_point_informed();
+    Eigen::Matrix3d rotation_to_world_frame();
+    Point sample_unit_ball();
 
     void add_obstacle(const Cuboid &obstacle);
     Point random_point();

@@ -278,6 +278,81 @@ std::vector<Point> RRT::smooth_rrt_path(const std::vector<Point>& rrt_path) {
     return smoothed_path;
 }
 
+Point RRT::sample_unit_ball() {
+    double r = std::pow(dist_x(rng), 1.0/3.0);  // Cubic root for uniform distribution
+    double theta = dist_x(rng) * 2 * M_PI;
+    double phi = std::acos(2 * dist_x(rng) - 1);
+    
+    return Point(
+        r * std::sin(phi) * std::cos(theta),
+        r * std::sin(phi) * std::sin(theta),
+        r * std::cos(phi)
+    );
+}
+
+// Add rotation matrix calculation
+Eigen::Matrix3d RRT::rotation_to_world_frame() {
+    Point c_best = goal - start;  // Direction vector from start to goal
+    c_best = c_best * (1.0 / c_best.distance(Point(0,0,0)));  // Normalize
+    
+    // Create rotation matrix using the direction vector
+    Eigen::Vector3d z_world(0, 0, 1);
+    Eigen::Vector3d c_vec(c_best.x, c_best.y, c_best.z);
+    Eigen::Vector3d x_world = c_vec;
+    Eigen::Vector3d y_world = z_world.cross(x_world);
+    y_world.normalize();
+    z_world = x_world.cross(y_world);
+    
+    Eigen::Matrix3d rotation;
+    rotation.col(0) = x_world;
+    rotation.col(1) = y_world;
+    rotation.col(2) = z_world;
+    
+    return rotation;
+}
+
+// Modify random point sampling for Informed RRT*
+Point RRT::random_point_informed() {
+    if (best_solution_node == nullptr) {
+        return random_point();  // Use regular sampling if no solution found yet
+    }
+    
+    double c_min = start.distance(goal);  // Minimum possible cost
+    double c_max = best_solution_cost;    // Current best cost
+    
+    // Calculate ellipsoid parameters
+    double c = c_max / 2.0;
+    double a = c;
+    double r = std::sqrt(c_max * c_max - c_min * c_min) / 2.0;
+    
+    // Sample from unit ball and transform to ellipsoid
+    Point ball_point = sample_unit_ball();
+    Eigen::Vector3d x_ball(ball_point.x, ball_point.y, ball_point.z);
+    
+    // Transform to ellipsoid
+    Eigen::Vector3d x_ellipse = x_ball;
+    x_ellipse(0) *= a;
+    x_ellipse(1) *= r;
+    x_ellipse(2) *= r;
+    
+    // Rotate to world frame
+    Eigen::Matrix3d rotation = rotation_to_world_frame();
+    Eigen::Vector3d x_world = rotation * x_ellipse;
+    
+    // Translate relative to start position
+    Point center = Point(
+        (start.x + goal.x) / 2.0,
+        (start.y + goal.y) / 2.0,
+        (start.z + goal.z) / 2.0
+    );
+    
+    return Point(
+        x_world(0) + center.x,
+        x_world(1) + center.y,
+        x_world(2) + center.z
+    );
+}
+
 //Find a path from the start to the goal
 std::vector<Point> RRT::find_rrt_path() {
 
@@ -285,7 +360,8 @@ std::vector<Point> RRT::find_rrt_path() {
         
         // std::cout << "Iteration: " << i << std::endl;
         //Randomly sample a point in the workspace (Vanilla RRT)
-        Point random = random_point();
+        // Point random = random_point();
+        Point random = random_point_informed(); //informed version
 
         //Find the nearest node in the tree to the random point
         rrtNode* nearest = nearest_node(random);
@@ -301,6 +377,14 @@ std::vector<Point> RRT::find_rrt_path() {
         //Check if the new node is close to the goal
         if (new_node && new_node->position.distance(goal) < step_size) {
             if(is_clear_path(new_node->position, goal)){
+
+                double path_cost = new_node->position.distance(start);
+                path_cost += new_node->position.distance(goal);
+                
+                if (path_cost < best_solution_cost) {
+                    best_solution_cost = path_cost;
+                    best_solution_node = new_node;
+                }
                 std::cout << "Goal found!" << std::endl;
                 std::vector<Point> path;
                 rrtNode* current = new_node;

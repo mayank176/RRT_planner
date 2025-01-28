@@ -12,6 +12,7 @@
   <!-- These are common ROS2 dependencies you might need -->
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
+  <depend>eigen</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
