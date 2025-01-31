@@ -13,9 +13,9 @@
     goal_x: 20.0
     goal_y: 20.0 
     goal_z: 10.0
-    step_size: 0.75 # RRT parameters
+    step_size: 2.0 # RRT parameters #affects bezier generation
     safety_margin: 0.7
-    max_iterations: 10000 
+    max_iterations: 20000 
 
 /quadrotor_controller:
   ros__parameters:

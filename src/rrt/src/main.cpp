@@ -129,44 +129,78 @@ rrtNode* RRT::extend_rewire_tree(rrtNode* parent, const Point &sampled_point) {
     //Extend Tree like in vanilla RRT:
     rrtNode* new_node = extend_tree(parent, sampled_point);
 
-    if (new_node == nullptr){
+    if (new_node == nullptr){ //extend_tree outputs nullptr when the sampled point is in an obstacle, then we skip this point
         return nullptr;
     } else {
         double n = nodes.size();
-        double r = 9.0 * std::pow((std::log(n) / n), 0.25);
+        double r = std::min(9.0 * std::pow((std::log(n) / n), 0.25), step_size);
 
-        std::vector<rrtNode*> nearby_nodes;
-        for (rrtNode* node: nodes){
-            if (node->position.distance(new_node->position) < r){
+        std::vector<rrtNode*> nearby_nodes; 
+        for (rrtNode* node: nodes){ //check-out nodes in radius 'r' around 
+            if (node->position.distance(new_node->position) < r && is_clear_path(node->position, new_node->position)){
                 nearby_nodes.push_back(node);
             }
         }
 
-        //Finda a better parent for new_node
+        //Find a better parent for new_node
         rrtNode* best_parent = nullptr;
-        double min_cost = parent->position.distance(start) + new_node->position.distance(parent->position);
 
-        //Find a better parent (or will return current parent):
-        for (rrtNode* potential_parent: nearby_nodes){
-            double cost = potential_parent->position.distance(start) + potential_parent->position.distance(new_node->position);
-            if (cost < min_cost){
+        double min_cost = 0;
+        rrtNode* cur = new_node;
+        while (cur->parent != nullptr) {
+            min_cost += cur->position.distance(cur->parent->position);
+            cur = cur->parent;
+        }
+
+        //Try to find better parent
+        for (rrtNode* potential_parent: nearby_nodes) {
+            //Calculate cost from start to potential_parent
+            double cost_to_parent = 0;
+            cur = potential_parent;
+            while (cur->parent != nullptr) {
+                cost_to_parent += cur->position.distance(cur->parent->position);
+                cur = cur->parent;
+            }
+            //Add cost from potential_parent to new_node
+            double total_cost = cost_to_parent + potential_parent->position.distance(new_node->position);
+            
+            if (total_cost < min_cost) {
                 best_parent = potential_parent;
-                min_cost = cost;
+                min_cost = total_cost;
             }
         }
-        
-        // Check if we can rewire THROUGH new_node.
-        for (rrtNode* node: nearby_nodes){
-            double current_cost = node->position.distance(start);
-            double potential_cost = new_node->position.distance(start) + node->position.distance(new_node->position);
 
-            if (potential_cost < current_cost){
+        // Rewire nearby nodes
+        for (rrtNode* node: nearby_nodes) {
+            if (node == best_parent) {
+                continue;
+            }
+            
+            //Calculate current cost to node
+            double current_cost = 0;
+            cur = node;
+            while (cur->parent != nullptr) {
+                current_cost += cur->position.distance(cur->parent->position);
+                cur = cur->parent;
+            }
+
+            //Calculate potential cost through new_node
+            double cost_to_new = 0;
+            cur = new_node;
+            while (cur->parent != nullptr) {
+                cost_to_new += cur->position.distance(cur->parent->position);
+                cur = cur->parent;
+            }
+            double potential_cost = cost_to_new + new_node->position.distance(node->position);
+
+            if (potential_cost < current_cost) {
                 node->parent = new_node;
             }
         }
         return new_node;
-    }
+    }    
 }
+
 
 //Check if path is collision free
 bool RRT::is_clear_path(const Point &start, const Point &end){
@@ -256,7 +290,7 @@ std::vector<Point> RRT::smooth_rrt_path(const std::vector<Point>& rrt_path) {
     while(i < rrt_path.size() - 1) {  
         
         size_t points_remaining = rrt_path.size() - i;
-        size_t num_control_points = std::min(points_remaining, size_t(50));  
+        size_t num_control_points = std::min(points_remaining, size_t(10));  
         std::vector<Point> control_points;
 
         for(size_t j = 0; j < num_control_points; j++) {
@@ -264,14 +298,16 @@ std::vector<Point> RRT::smooth_rrt_path(const std::vector<Point>& rrt_path) {
         }
 
         size_t points_to_generate = (num_control_points > 1) ? num_control_points - 1 : 1;
-        double t_step = 1.0 / (points_to_generate);
+        double t_step = 1.0 / (points_to_generate*2);
 
-        for (size_t j = 0; j < points_to_generate; j++) {
+        for (size_t j = 0; j < points_to_generate*2; j++) {
             double t = j * t_step;
             Point p = evaluate_bezier_de_casteljau(control_points, t);
             if(is_point_valid(p)) {
                 smoothed_path.push_back(p);
-            } 
+            } else {
+                RCLCPP_INFO(this->get_logger(), "Point not valid");
+            }
         }
         i += (num_control_points > 1) ? num_control_points - 1 : 1;
     }
@@ -355,80 +391,163 @@ Point RRT::random_point_informed() {
 
 //Find a path from the start to the goal
 std::vector<Point> RRT::find_rrt_path() {
+    rrtNode* best_node = nullptr;
+    double best_cost = std::numeric_limits<double>::infinity();
 
     for (int i = 0; i < max_iterations; i++){
+        // RCLCPP_INFO(this->get_logger(), "iteration: %d", i);
         
-        // std::cout << "Iteration: " << i << std::endl;
         //Randomly sample a point in the workspace (Vanilla RRT)
-        // Point random = random_point();
-        Point random = random_point_informed(); //informed version
+        Point random = random_point();
+        // Point random = random_point_informed(); //informed version
 
         //Find the nearest node in the tree to the random point
         rrtNode* nearest = nearest_node(random);
 
         //Extend the tree towards the random point
-        rrtNode* new_node = extend_tree(nearest, random); //Vanilla RRT
-        // rrtNode* new_node = extend_rewire_tree(nearest, random); //RRT*
+        // rrtNode* new_node = extend_tree(nearest, random); //Vanilla RRT
+        rrtNode* new_node = extend_rewire_tree(nearest, random); //RRT*
 
         if (i % 50 == 0 && visualization_callback) {  // Adjust frequency as needed
             visualization_callback(nodes);
         }
+        // RCLCPP_INFO(this->get_logger(), "Step_size: %f", step_size);
 
-        //Check if the new node is close to the goal
         if (new_node && new_node->position.distance(goal) < step_size) {
-            if(is_clear_path(new_node->position, goal)){
-
-                double path_cost = new_node->position.distance(start);
-                path_cost += new_node->position.distance(goal);
-                
-                if (path_cost < best_solution_cost) {
-                    best_solution_cost = path_cost;
-                    best_solution_node = new_node;
-                }
-                std::cout << "Goal found!" << std::endl;
-                std::vector<Point> path;
+            if(is_clear_path(new_node->position, goal)) {
+                double path_cost = 0;
                 rrtNode* current = new_node;
-
                 bool path_valid = true;
+
+                // Calculate cost of path
+                path_cost += goal.distance(current->position);
                 while (current != nullptr && current->parent != nullptr) {
                     if (!is_clear_path(current->position, current->parent->position)) {
                         path_valid = false;
                         break;
                     }
-                    path.push_back(current->position);
+                    path_cost += current->position.distance(current->parent->position);
                     current = current->parent;
                 }
                 
-                if (!path_valid) {
-                    continue;
-                }
+                if (!path_valid) continue;
                 
-                if (current != nullptr) {
-                    path.push_back(current->position);
-                }
 
-                std::reverse(path.begin(), path.end());
-                path.push_back(goal);
-                //******Smooth path with Bezier curve:******/
-                path = smooth_rrt_path(path);
-                auto path_msg = nav_msgs::msg::Path();
-                path_msg.header.frame_id = "map";
-                path_msg.header.stamp = this->now();
-            
-                for (const auto& point : path) {
-                    geometry_msgs::msg::PoseStamped pose;
-                    pose.header = path_msg.header;
-                    pose.pose.position.x = point.x;
-                    pose.pose.position.y = point.y;
-                    pose.pose.position.z = point.z;
-                    pose.pose.orientation.w = 1.0;  // Default orientation
-                    path_msg.poses.push_back(pose);
+                 RCLCPP_INFO(this->get_logger(), 
+            "Found potential path with cost: %.6f (current best: %.6f) at iteration %d", 
+            path_cost, best_cost, i);
+                
+
+                // Only save the node and cost if better
+                if (path_cost < best_cost) {
+                    best_cost = path_cost;
+                    best_node = new_node;
                 }
-                path_pub_ -> publish(path_msg);
-                RCLCPP_INFO(this->get_logger(), "Published path with %zu points", path.size());
-                return path;
             }
         }
     }
-    return std::vector<Point>();
+    
+    // // After all iterations, construct the path from the best node
+    std::vector<Point> best_path;
+    if (best_node != nullptr) {
+        rrtNode* current = best_node;
+        while (current != nullptr && current->parent != nullptr) {
+            best_path.push_back(current->position);
+            current = current->parent;
+        }
+        if (current != nullptr) {
+            best_path.push_back(current->position);
+        }
+        std::reverse(best_path.begin(), best_path.end());
+        best_path.push_back(goal);
+        
+        // Smooth and publish only the final path
+        best_path = smooth_rrt_path(best_path);
+        auto path_msg = nav_msgs::msg::Path();
+        path_msg.header.frame_id = "map";
+        path_msg.header.stamp = this->now();
+    
+        for (const auto& point : best_path) {
+            geometry_msgs::msg::PoseStamped pose;
+            pose.header = path_msg.header;
+            pose.pose.position.x = point.x;
+            pose.pose.position.y = point.y;
+            pose.pose.position.z = point.z;
+            pose.pose.orientation.w = 1.0;
+            path_msg.poses.push_back(pose);
+        }
+        path_pub_->publish(path_msg);
+        RCLCPP_INFO(this->get_logger(), "Published final best path with cost: %f", best_cost);
+    }
+    
+    return best_path;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//         //Check if the new node is close to the goal
+//         if (new_node && new_node->position.distance(goal) < step_size) {
+//             if(is_clear_path(new_node->position, goal)){
+//                 RCLCPP_INFO(this->get_logger(), "Goal Found!");
+//                 std::vector<Point> path;
+//                 rrtNode* current = new_node;
+
+//                 bool path_valid = true;
+//                 while (current != nullptr && current->parent != nullptr) {
+//                     if (!is_clear_path(current->position, current->parent->position)) {
+//                         path_valid = false;
+//                         RCLCPP_INFO(this->get_logger(), "Path not valid!");
+//                         break;
+//                     }
+//                     path.push_back(current->position);
+//                     current = current->parent;
+//                 }
+
+//                 if (!path_valid) {
+//                     continue;
+//                 }
+
+//                 if (current != nullptr) {
+//                     path.push_back(current->position);
+//                 }
+
+//                 std::reverse(path.begin(), path.end());
+//                 path.push_back(goal);
+//                 //******Smooth path with Bezier curve:******/
+//                 path = smooth_rrt_path(path);
+//                 auto path_msg = nav_msgs::msg::Path();
+//                 path_msg.header.frame_id = "map";
+//                 path_msg.header.stamp = this->now();
+
+//                 for (const auto& point : path) {
+//                     geometry_msgs::msg::PoseStamped pose;
+//                     pose.header = path_msg.header;
+//                     pose.pose.position.x = point.x;
+//                     pose.pose.position.y = point.y;
+//                     pose.pose.position.z = point.z;
+//                     pose.pose.orientation.w = 1.0;  // Default orientation
+//                     path_msg.poses.push_back(pose);
+//                 }
+//                 path_pub_ -> publish(path_msg);
+//                 RCLCPP_INFO(this->get_logger(), "Published path with %zu points", path.size());
+//                 return path;
+//             }
+//         }
+//     }
+//     return std::vector<Point>();
+// }
+
+
+//**************************************/
