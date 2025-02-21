@@ -411,7 +411,9 @@ QuadrotorController::QuadrotorController()
     
     using namespace std::chrono_literals;
     sim_timer_ = this->create_wall_timer(
-        10ms, std::bind(&QuadrotorController::simulate_step, this));
+    10ms,
+    [this]() { this->simulate_step(); }
+);
     
     RCLCPP_INFO(this->get_logger(), "Quadrotor controller node initialized");
 }

@@ -90,7 +90,7 @@ State Quadrotor::state_derivative(const State& state, double thrust, const Eigen
     // Position derivative
     derivative.position = state.velocity;
     
-    // Velocity derivative (corrected to match Python)
+    // Velocity derivative 
     Eigen::Vector3d gravity(0, 0, -g);
     Eigen::Vector3d force = gravity * mass + rotate_k(state.quaternion) * thrust;
     derivative.velocity = force / mass;

@@ -268,16 +268,17 @@ rrtNode* RRT::extend_tree(rrtNode* nearest, const Point &to){
 Point RRT::evaluate_bezier_de_casteljau(const std::vector<Point>& control_points, double t) {
     if (control_points.size() == 1) return control_points[0];
     
-    std::vector<Point> points = control_points;
+    Point points[20]; //on the stack
+    std::copy(control_points.begin(), control_points.end(), points);
     
-    // Apply de Casteljau's algorithm
+    const double one_minus_t = 1.0 - t;
+    
     for (size_t r = 1; r < control_points.size(); ++r) {
         for (size_t i = 0; i < control_points.size() - r; ++i) {
-            points[i] = Point(
-                (1.0 - t) * points[i].x + t * points[i + 1].x,
-                (1.0 - t) * points[i].y + t * points[i + 1].y,
-                (1.0 - t) * points[i].z + t * points[i + 1].z
-            );
+           
+            points[i].x = one_minus_t * points[i].x + t * points[i + 1].x;
+            points[i].y = one_minus_t * points[i].y + t * points[i + 1].y;
+            points[i].z = one_minus_t * points[i].z + t * points[i + 1].z;
         }
     }
     return points[0];
@@ -290,7 +291,7 @@ std::vector<Point> RRT::smooth_rrt_path(const std::vector<Point>& rrt_path) {
     while(i < rrt_path.size() - 1) {  
         
         size_t points_remaining = rrt_path.size() - i;
-        size_t num_control_points = std::min(points_remaining, size_t(10));  
+        size_t num_control_points = std::min(points_remaining, size_t(20));  
         std::vector<Point> control_points;
 
         for(size_t j = 0; j < num_control_points; j++) {
@@ -298,9 +299,9 @@ std::vector<Point> RRT::smooth_rrt_path(const std::vector<Point>& rrt_path) {
         }
 
         size_t points_to_generate = (num_control_points > 1) ? num_control_points - 1 : 1;
-        double t_step = 1.0 / (points_to_generate*2);
+        double t_step = 1.0 / (points_to_generate*3);
 
-        for (size_t j = 0; j < points_to_generate*2; j++) {
+        for (size_t j = 0; j < points_to_generate*3; j++) {
             double t = j * t_step;
             Point p = evaluate_bezier_de_casteljau(control_points, t);
             if(is_point_valid(p)) {
@@ -314,79 +315,11 @@ std::vector<Point> RRT::smooth_rrt_path(const std::vector<Point>& rrt_path) {
     return smoothed_path;
 }
 
-Point RRT::sample_unit_ball() {
-    double r = std::pow(dist_x(rng), 1.0/3.0);  // Cubic root for uniform distribution
-    double theta = dist_x(rng) * 2 * M_PI;
-    double phi = std::acos(2 * dist_x(rng) - 1);
-    
-    return Point(
-        r * std::sin(phi) * std::cos(theta),
-        r * std::sin(phi) * std::sin(theta),
-        r * std::cos(phi)
-    );
-}
-
-// Add rotation matrix calculation
-Eigen::Matrix3d RRT::rotation_to_world_frame() {
-    Point c_best = goal - start;  // Direction vector from start to goal
-    c_best = c_best * (1.0 / c_best.distance(Point(0,0,0)));  // Normalize
-    
-    // Create rotation matrix using the direction vector
-    Eigen::Vector3d z_world(0, 0, 1);
-    Eigen::Vector3d c_vec(c_best.x, c_best.y, c_best.z);
-    Eigen::Vector3d x_world = c_vec;
-    Eigen::Vector3d y_world = z_world.cross(x_world);
-    y_world.normalize();
-    z_world = x_world.cross(y_world);
-    
-    Eigen::Matrix3d rotation;
-    rotation.col(0) = x_world;
-    rotation.col(1) = y_world;
-    rotation.col(2) = z_world;
-    
-    return rotation;
-}
-
-// Modify random point sampling for Informed RRT*
-Point RRT::random_point_informed() {
-    if (best_solution_node == nullptr) {
-        return random_point();  // Use regular sampling if no solution found yet
-    }
-    
-    double c_min = start.distance(goal);  // Minimum possible cost
-    double c_max = best_solution_cost;    // Current best cost
-    
-    // Calculate ellipsoid parameters
-    double c = c_max / 2.0;
-    double a = c;
-    double r = std::sqrt(c_max * c_max - c_min * c_min) / 2.0;
-    
-    // Sample from unit ball and transform to ellipsoid
-    Point ball_point = sample_unit_ball();
-    Eigen::Vector3d x_ball(ball_point.x, ball_point.y, ball_point.z);
-    
-    // Transform to ellipsoid
-    Eigen::Vector3d x_ellipse = x_ball;
-    x_ellipse(0) *= a;
-    x_ellipse(1) *= r;
-    x_ellipse(2) *= r;
-    
-    // Rotate to world frame
-    Eigen::Matrix3d rotation = rotation_to_world_frame();
-    Eigen::Vector3d x_world = rotation * x_ellipse;
-    
-    // Translate relative to start position
-    Point center = Point(
-        (start.x + goal.x) / 2.0,
-        (start.y + goal.y) / 2.0,
-        (start.z + goal.z) / 2.0
-    );
-    
-    return Point(
-        x_world(0) + center.x,
-        x_world(1) + center.y,
-        x_world(2) + center.z
-    );
+Point RRT::random_point_informed(){
+    //informed sampling
+    //sample a point in the unit ball
+    //scale to ellipsoid
+    //rotation matrix to align to goal
 }
 
 //Find a path from the start to the goal

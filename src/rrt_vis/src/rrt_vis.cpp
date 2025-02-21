@@ -17,7 +17,7 @@ visualization_msgs::msg::Marker path_visualizer::create_tree_marker() {
     marker.color.r = 0.0;
     marker.color.g = 1.0;
     marker.color.b = 0.0;
-    marker.color.a = 0.05;
+    marker.color.a = 0.1;
 
     for (const auto &node : rrt_->nodes) {
         if (node->parent) {
@@ -144,7 +144,7 @@ void path_visualizer::visualize_and_plan() {
             marker_publisher_->publish(update_markers);
             
             // Add small delay to make visualization visible
-            // std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
         };
 
         path_ = rrt_->find_rrt_path();
